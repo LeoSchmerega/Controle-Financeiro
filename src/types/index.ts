@@ -1,76 +1,22 @@
-/**
- * ==========================================
- * DOMÍNIO FINANCEIRO (ENTIDADES)
- * ==========================================
- */
+// src/types/index.ts
 
-/** Tipos de transação financeira aceitos no sistema */
-export type TipoTransacao = "receita" | "despesa";
+export * from "./categoria";
 
-/** Métodos de pagamento aceitos */
-export type MetodoPagamento = "Pix" | "Crédito" | "Débito" | "Boleto";
-
-/** Interface do Lançamento Financeiro */
-export interface Lancamento {
-  id: string;
-  icone: string;
-  descricao: string;
-  categoria: string;
-  data: string; // Formato ISO "YYYY-MM-DD"
-  metodo: MetodoPagamento;
-  valor: number;
-  tipo: TipoTransacao;
+export interface OpcaoMes {
+  valor: string; // Formato "YYYY-MM"
+  rotulo: string; // Ex: "Janeiro 2026"
 }
-
-/** Tipo para cadastro de novos lançamentos (sem ID, gerado pelo backend/UUID) */
-export type CriarLancamentoInput = Omit<Lancamento, "id">;
-
-/** Entidade de Categoria */
-export interface Categoria {
-  id: string;
-  nome: string;
-  cor: string;
-  icone: string;
-}
-
-/** Resumo dos cards do Dashboard */
-export interface ResumoFinanceiro {
-  totalReceitas: number;
-  totalDespesas: number;
-  saldoTotal: number;
-}
-
-/**
- * ==========================================
- * INTERFACE E NAVEGAÇÃO (UI)
- * ==========================================
- */
-
-/** Páginas da aplicação para controle de rotas/navegação */
-export type PaginaAtiva = "dashboard" | "lançamentos" | "categoria";
-
-/** Alternador de temas */
-export type Tema = "light" | "dark";
 
 export interface ItemCampo {
-  id: string;
+  categoriaId: string; // Padrão atualizado
   rotulo: string;
   valor: string;
 }
 
-export interface LancamentoHistorico {
-  id: string;
-  data: string;
-  descricao: string;
-  categoria: string;
-  pagamento: string;
-  tipo: "receita" | "fixo" | "variavel";
-  valor: number;
+export interface RegistroMensal {
+  receitas: ItemCampo[];
+  gastosFixos: ItemCampo[];
+  variaveis: ItemCampo[];
 }
 
-export type TipoModal =
-  | "receitas"
-  | "gastos-fixos"
-  | "variaveis"
-  | "historico"
-  | null;
+export type MapaFinanceiro = Record<string, RegistroMensal>;

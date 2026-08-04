@@ -1,5 +1,5 @@
 import React from "react";
-// 1. Importação apenas dos tipos realmente necessários
+// 1. Importação dos tipos universais do projeto
 import type { PaginaAtiva, Tema } from "../types";
 
 // 2. Importação dos SVGs como componentes React
@@ -17,11 +17,11 @@ interface NavItem {
   Icon: React.FC<React.SVGProps<SVGSVGElement>>;
 }
 
-// 4. Configuração estática das rotas do menu (Fora do componente para não recriar na memória a cada render)
+// 4. Configuração das rotas do menu rigorosamente alinhadas com PaginaAtiva
 const NAV_ITEMS: NavItem[] = [
-  { id: "dashboard", label: "Dashboard", Icon: IconDashboard },
-  { id: "lançamentos", label: "Lançamentos", Icon: IconLancamentos },
-  { id: "categoria", label: "Categoria", Icon: IconCategoria },
+  { id: "Dashboard", label: "Dashboard", Icon: IconDashboard },
+  { id: "Categorias", label: "Categorias", Icon: IconCategoria },
+  { id: "Lançamentos", label: "Lançamentos", Icon: IconLancamentos },
 ];
 
 // 5. Interface de Props que o Sidebar recebe (Contrato com o App.tsx)
@@ -46,7 +46,7 @@ export default function Sidebar({
       {/* Bloco Superior: Logo + Navegação */}
       <div className="flex-1 flex flex-col">
         {/* Header (Logo + Título) */}
-        <header className="flex items-center gap-3 mt-[30px] ">
+        <header className="flex items-center gap-3 mt-[30px]">
           <div className="flex items-center justify-center w-auto h-auto rounded-full">
             <Logo className="w-[70px] h-[70px] fill-current" />
           </div>
@@ -56,7 +56,7 @@ export default function Sidebar({
         </header>
 
         {/* Navegação Semântica */}
-        <div className="mt-[50px] p-[10px] ">
+        <div className="mt-[50px] p-[10px]">
           <nav aria-label="Menu Principal">
             <ul className="space-y-3">
               {NAV_ITEMS.map(({ id, label, Icon }) => {
@@ -101,15 +101,15 @@ export default function Sidebar({
           {/* Botão Modo Claro */}
           <button
             type="button"
-            onClick={() => onToggleTema("light")}
+            onClick={() => onToggleTema("claro")}
             aria-label="Ativar modo claro"
             className={`flex items-center justify-center w-10 h-10 rounded-full transition-all ${
-              tema === "light" ? "bg-[#8B0000]" : "bg-transparent shadow-sm"
+              tema === "claro" ? "bg-[#8B0000]" : "bg-transparent shadow-sm"
             }`}
           >
             <IconSol
               className={`w-5 h-5 [&_path]:transition-colors ${
-                tema === "light"
+                tema === "claro"
                   ? "[&_path]:fill-white"
                   : "[&_path]:fill-black shadow-lm"
               }`}
@@ -119,15 +119,17 @@ export default function Sidebar({
           {/* Botão Modo Escuro */}
           <button
             type="button"
-            onClick={() => onToggleTema("dark")}
+            onClick={() => onToggleTema("escuro")}
             aria-label="Ativar modo escuro"
             className={`flex items-center justify-center w-10 h-10 rounded-full transition-all ${
-              tema === "dark" ? "bg-[#8B0000]" : "bg-transparent"
+              tema === "escuro" ? "bg-[#8B0000]" : "bg-transparent"
             }`}
           >
             <IconLua
               className={`w-5 h-5 [&_path]:transition-colors ${
-                tema === "dark" ? "[&_path]:fill-white" : "[&_path]:fill-black"
+                tema === "escuro"
+                  ? "[&_path]:fill-white"
+                  : "[&_path]:fill-black"
               }`}
             />
           </button>

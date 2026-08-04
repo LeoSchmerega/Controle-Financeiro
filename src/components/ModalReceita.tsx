@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import IconReceitas from "../assets/icones/ic-receitas.svg?react";
-import type { ItemCampo } from "../types/index"; // Importando direto do seu arquivo de tipos
+import type { ItemCampo } from "../types/index";
 
 interface ModalReceitaProps {
   isOpen: boolean;
@@ -9,11 +9,11 @@ interface ModalReceitaProps {
   camposIniciais?: ItemCampo[];
 }
 
-// Configuração padrão de campos de Receita conforme o protótipo
+// Configuração padrão alinhada com a propriedade 'categoriaId' do ItemCampo
 const CAMPOS_RECEITA_PADRAO: ItemCampo[] = [
-  { id: "salario", rotulo: "Salário", valor: "" },
-  { id: "freelancer", rotulo: "Freelancer", valor: "" },
-  { id: "outro", rotulo: "Outro", valor: "" },
+  { categoriaId: "salario", rotulo: "Salário", valor: "" },
+  { categoriaId: "freelancer", rotulo: "Freelancer", valor: "" },
+  { categoriaId: "outro", rotulo: "Outro", valor: "" },
 ];
 
 export default function ModalReceita({
@@ -45,11 +45,29 @@ export default function ModalReceita({
 
   if (!isOpen) return null;
 
-  // Atualização reativa do campo de texto
-  const handleInputChange = (id: string, novoValor: string) => {
+  // Função de sanitização e validação por categoriaId (Até 6 dígitos inteiros + 2 centavos)
+  const handleInputChange = (categoriaId: string, valorDigitado: string) => {
+    // 1. Substitui qualquer caractere que não seja número, vírgula ou ponto por string vazia
+    let valorFormatado = valorDigitado.replace(/[^0-9.,]/g, "");
+
+    // 2. Garante apenas um único separador decimal (ponto ou vírgula)
+    const partes = valorFormatado.split(/[.,]/);
+
+    if (partes.length > 1) {
+      const parteInteira = partes[0].slice(0, 6);
+      const parteDecimal = partes[1].slice(0, 2);
+      const separador = valorFormatado.includes(",") ? "," : ".";
+
+      valorFormatado = `${parteInteira}${separador}${parteDecimal}`;
+    } else {
+      valorFormatado = partes[0].slice(0, 6);
+    }
+
     setCampos((prevCampos) =>
       prevCampos.map((campo) =>
-        campo.id === id ? { ...campo, valor: novoValor } : campo,
+        campo.categoriaId === categoriaId
+          ? { ...campo, valor: valorFormatado }
+          : campo,
       ),
     );
   };
@@ -68,14 +86,17 @@ export default function ModalReceita({
   };
 
   return (
-    /* BackDrop (Fundo Escuro com desfoque) */
+    /* Backdrop (Fundo Escuro com desfoque) */
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn"
       onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-receita-titulo"
     >
-      {/* Moldura Externa (Fundo Rosa/Vinho Claro conforme o protótipo) */}
+      {/* Moldura Externa */}
       <div
-        className="relative w-full max-w-md bg-[#FFDADA] p-3 rounded-2xl shadow-2xl border border-slate-300"
+        className="relative w-full max-w-lg bg-[#FFDADA] p-4 rounded-2xl shadow-2xl border border-slate-300"
         onClick={(e) => e.stopPropagation()} // Impede o fechamento ao clicar dentro do card
       >
         {/* Container Interno */}
@@ -83,14 +104,22 @@ export default function ModalReceita({
           {/* Cabeçalho do Modal */}
           <div className="flex items-center justify-between bg-[#8B0000] px-4 py-3 text-white">
             <div className="flex items-center gap-3">
-              <IconReceitas className="w-6 h-6 fill-current text-white shrink-0" />
-              <h2 className="font-semibold text-lg tracking-wide">Receitas</h2>
+              <IconReceitas
+                className="w-6 h-6 fill-current text-white shrink-0"
+                aria-hidden="true"
+              />
+              <h2
+                id="modal-receita-titulo"
+                className="font-semibold text-lg tracking-wide"
+              >
+                Receitas
+              </h2>
             </div>
             <button
               onClick={onClose}
               type="button"
-              className="text-white hover:text-slate-300 font-bold text-xl leading-none focus:outline-none focus:ring-2 focus:ring-white/50 rounded"
-              title="Fechar Modal"
+              className="text-white hover:text-slate-300 font-bold text-xl leading-none focus:outline-none focus:ring-2 focus:ring-white/50 rounded transition-transform duration-300 hover:rotate-90 active:scale-90 inline-flex items-center justify-center p-1 cursor-pointer"
+              aria-label="Fechar modal"
             >
               ✕
             </button>
@@ -107,24 +136,27 @@ export default function ModalReceita({
             </div>
 
             {/* Lista de Entradas */}
-            <div className="flex flex-col gap-3 max-h-[260px] overflow-y-auto pr-1">
+            <div className="flex flex-col gap-3 max-h-65 overflow-y-auto p-2">
               {campos.map((campo) => (
                 <div
-                  key={campo.id}
+                  key={campo.categoriaId}
                   className="grid grid-cols-2 gap-4 items-center"
                 >
-                  <div className="p-2 border border-slate-400 rounded-md text-slate-800 font-medium bg-slate-50 text-sm">
+                  <label
+                    htmlFor={`campo-${campo.categoriaId}`}
+                    className="p-2 border border-slate-400 rounded-md text-slate-800 font-medium bg-slate-50 text-sm cursor-pointer"
+                  >
                     {campo.rotulo}
-                  </div>
+                  </label>
 
                   <input
-                    type="number"
-                    step="0.01"
-                    min="0"
+                    id={`campo-${campo.categoriaId}`}
+                    type="text"
+                    inputMode="decimal"
                     placeholder="0,00"
                     value={campo.valor}
                     onChange={(e) =>
-                      handleInputChange(campo.id, e.target.value)
+                      handleInputChange(campo.categoriaId, e.target.value)
                     }
                     className="p-2 border border-slate-400 rounded-md text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#8B0000] text-sm"
                   />
@@ -138,7 +170,7 @@ export default function ModalReceita({
                 <span className="p-2 border border-slate-400 rounded-md font-bold text-slate-800 bg-slate-50 text-sm px-4">
                   Total
                 </span>
-                <span className="p-2 border border-slate-400 rounded-md font-bold text-slate-900 bg-white text-sm min-w-[100px] text-center">
+                <span className="p-2 border border-slate-400 rounded-md font-bold text-slate-900 bg-white text-sm min-w-25 text-center">
                   R${" "}
                   {totalCalculado.toLocaleString("pt-BR", {
                     minimumFractionDigits: 2,
@@ -149,7 +181,7 @@ export default function ModalReceita({
 
               <button
                 type="submit"
-                className="bg-[#8B0000] text-white font-semibold px-6 py-2 rounded-full hover:bg-[#6b0000] active:scale-95 transition-all shadow-md focus:outline-none focus:ring-2 focus:ring-red-800"
+                className="bg-[#8B0000] text-white font-semibold px-6 py-2 rounded-full hover:bg-[#6b0000] hover:scale-105 active:scale-95 transition-all duration-200 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-red-800 cursor-pointer"
               >
                 Salvar
               </button>
