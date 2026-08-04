@@ -1,3 +1,8 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@layer base {
+  html,
+  body {
+    @apply h-full w-full overflow-hidden bg-[#8B0000] text-slate-100 antialiased;
+  }
+}

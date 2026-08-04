@@ -1,6 +1,6 @@
 export default function HeaderLancamento() {
   return (
-    <header className="w-full h-[150px] flex flex-row justify-between items-center p-4">
+    <header className="w-full h-[150px] flex flex-row justify-between items-center">
       {/* Lado Esquerdo: Ícone + Título */}
       <div className="flex items-center gap-2 ">
         <svg
@@ -20,16 +20,16 @@ export default function HeaderLancamento() {
           <polyline points="10 9 9 9 8 9" />
         </svg>
 
-        <h1 className="text-xs font-bold tracking-wider text-black whitespace-nowrap">
+        <h1 className="text-[35px] font-bold tracking-wider text-red-950 whitespace-nowrap">
           Lançamentos e Planejamentos
         </h1>
       </div>
 
       {/* Lado Direito */}
-      <div className="w-[300px] h-[60px] flex items-center gap-0 bg-[#8B0000] p-[8px] rounded-[15px] shadow-md">
+      <div className="w-[270px] h-[50px] flex items-center justify-center gap-0 bg-[#8B0000] p-[8px] rounded-[15px] shadow-md">
         {/* Ícone de Calendário */}
         <svg
-          className="w-[40px] h-[40px] shrink-0"
+          className="w-[30px] h-[30px] shrink-0"
           viewBox="0 0 70 70"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
@@ -43,7 +43,7 @@ export default function HeaderLancamento() {
         {/* Texto "MÊS:" */}
         <span
           style={{ color: "#ffffff" }}
-          className="font-sans font-bold text-4xl uppercase select-none pl-[10px]"
+          className="font-sans font-bold text-[20px] uppercase select-none pl-[5px]"
         >
           MÊS:
         </span>
@@ -53,7 +53,7 @@ export default function HeaderLancamento() {
           <select
             defaultValue="julho-2026"
             style={{ color: "#ffffff" }}
-            className="ml-10 text-4xl bg-transparent font-sans font-bold uppercase cursor-pointer border-none outline-none focus:outline-none focus:ring-0 appearance-none tracking-wider text-center"
+            className="text-[20px] bg-transparent font-sans font-bold uppercase cursor-pointer border-none outline-none focus:outline-none focus:ring-0 appearance-none tracking-wider text-center"
           >
             <option value="janeiro-2026" className="bg-[#8B0000] text-white">
               JAN / 2026
