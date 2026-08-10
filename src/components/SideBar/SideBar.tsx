@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, X } from "lucide-react";
 // 1. Importação dos tipos universais do projeto
 import type { PaginaAtiva } from "../../types";
 import type { TemaCor } from "../../utils/temasCores";
@@ -31,6 +31,10 @@ interface SidebarProps {
   temasCores: TemaCor[];
   temaCorAtivo: TemaCor;
   onTrocarTemaCor: (tema: TemaCor) => void;
+  // Controle do drawer off-canvas em mobile (< md). Em telas md+ a sidebar
+  // fica sempre visível e esses dois props não têm efeito visual.
+  isOpen: boolean;
+  onClose: () => void;
 }
 
 export default function Sidebar({
@@ -39,15 +43,29 @@ export default function Sidebar({
   temasCores,
   temaCorAtivo,
   onTrocarTemaCor,
+  isOpen,
+  onClose,
 }: SidebarProps) {
   const [seletorCoresAberto, setSeletorCoresAberto] = useState(false);
+
+  // Em mobile, selecionar uma página fecha o drawer automaticamente —
+  // em md+ onClose() não faz nada porque o drawer nem existe visualmente.
+  const handleSelectPagina = (pagina: PaginaAtiva) => {
+    onSelectPagina(pagina);
+    onClose();
+  };
 
   return (
     <aside
       // 👇 h-full (em vez de min-h-screen) para respeitar a altura real do
       // card pai em App.tsx, que é menor que 100vh por causa do padding.
-      className="flex flex-col justify-between w-64 bg-brand-soft select-none h-full border-r border-brand/15 shrink-0 p-6"
+      // Abaixo de md: drawer off-canvas (absolute + translate-x). Em md+:
+      // volta a ser uma coluna estática, sempre visível, como antes.
+      className={`absolute inset-y-0 left-0 z-40 flex flex-col justify-between w-64 bg-brand-soft select-none h-full border-r border-brand/15 shrink-0 p-6 transition-transform duration-300 ease-in-out md:static md:translate-x-0 ${
+        isOpen ? "translate-x-0" : "-translate-x-full"
+      }`}
       aria-label="Navegação Principal"
+      aria-hidden={!isOpen ? true : undefined}
     >
       {/* Bloco Superior: Brand/Header + Navegação */}
       <div className="flex flex-col gap-8">
@@ -56,9 +74,18 @@ export default function Sidebar({
           <div className="flex items-center justify-center w-auto h-auto rounded-full shrink-0">
             <Logo className="w-17.5 h-17.5 fill-current" />
           </div>
-          <h1 className="text-xl font-extrabold tracking-tight text-slate-900">
+          <h1 className="text-xl font-extrabold tracking-tight text-slate-900 flex-1">
             Fy Control
           </h1>
+          {/* Fechar o drawer só faz sentido em mobile — some em md+ */}
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Fechar menu"
+            className="md:hidden flex items-center justify-center min-w-11 min-h-11 -mr-2 text-slate-500 hover:text-brand rounded-md hover:bg-white/60 transition-colors cursor-pointer"
+          >
+            <X className="w-5 h-5 shrink-0" />
+          </button>
         </header>
 
         {/* Navegação Semântica com Efeitos de Hover Modernos */}
@@ -71,7 +98,7 @@ export default function Sidebar({
                 <li key={id}>
                   <button
                     type="button"
-                    onClick={() => onSelectPagina(id)}
+                    onClick={() => handleSelectPagina(id)}
                     aria-current={isActive ? "page" : undefined}
                     className={`flex items-center w-full gap-3 px-4 py-3 text-sm font-bold rounded-2xl transition-all duration-200 cursor-pointer ${
                       isActive

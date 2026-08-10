@@ -89,8 +89,8 @@ export default function DashboardPage({
       </div>
 
       {/* Fluxo financeiro + Despesas por categoria */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        <div className="lg:col-span-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+        <div className="md:col-span-2 lg:col-span-2">
           <FluxoFinanceiro lancamentos={lancamentos} mesReferencia={mesSelecionado} />
         </div>
         <DespesasPorCategoria
@@ -100,8 +100,8 @@ export default function DashboardPage({
       </div>
 
       {/* Últimos lançamentos + Metas financeiras */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="md:col-span-2 lg:col-span-2">
           <LancamentosRecentes
             lancamentos={lancamentos}
             categorias={categorias}

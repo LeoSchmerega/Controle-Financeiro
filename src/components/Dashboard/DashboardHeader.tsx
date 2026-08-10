@@ -41,9 +41,10 @@ export default function DashboardHeader({
             onClick={onMesAnterior}
             aria-label="Mês anterior"
             title="Mês anterior"
-            className="p-1 text-slate-400 hover:text-brand rounded-md hover:bg-red-50 transition-colors cursor-pointer"
+            className="flex items-center justify-center min-w-11 min-h-11 sm:min-w-0 sm:min-h-0 sm:p-1
+                       text-slate-400 hover:text-brand rounded-md hover:bg-red-50 transition-colors cursor-pointer"
           >
-            <ChevronLeft className="w-3.5 h-3.5" />
+            <ChevronLeft className="w-3.5 h-3.5 shrink-0" />
           </button>
           <select
             value={mesSelecionado}
@@ -61,17 +62,18 @@ export default function DashboardHeader({
             onClick={onProximoMes}
             aria-label="Próximo mês"
             title="Próximo mês"
-            className="p-1 text-slate-400 hover:text-brand rounded-md hover:bg-red-50 transition-colors cursor-pointer"
+            className="flex items-center justify-center min-w-11 min-h-11 sm:min-w-0 sm:min-h-0 sm:p-1
+                       text-slate-400 hover:text-brand rounded-md hover:bg-red-50 transition-colors cursor-pointer"
           >
-            <ChevronRight className="w-3.5 h-3.5" />
+            <ChevronRight className="w-3.5 h-3.5 shrink-0" />
           </button>
         </div>
 
         <button
           onClick={onNovoLancamento}
-          className="bg-brand hover:bg-brand-hover text-white px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 shadow-md transition-all cursor-pointer active:scale-95"
+          className="bg-brand hover:bg-brand-hover text-white px-4 py-2.5 min-h-11 sm:min-h-0 rounded-xl font-bold text-xs flex items-center gap-2 shadow-md transition-all cursor-pointer active:scale-95"
         >
-          <Plus className="w-4 h-4 stroke-3" />
+          <Plus className="w-4 h-4 stroke-3 shrink-0" />
           <span>Novo Lançamento</span>
         </button>
       </div>

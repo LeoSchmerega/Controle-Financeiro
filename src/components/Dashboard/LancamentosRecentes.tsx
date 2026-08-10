@@ -35,10 +35,11 @@ export default function LancamentosRecentes({
         </h2>
         <button
           onClick={onVerTodos}
-          className="flex items-center gap-1 text-xs font-bold text-brand hover:text-brand-hover cursor-pointer"
+          className="flex items-center gap-1 text-xs font-bold text-brand hover:text-brand-hover cursor-pointer
+                     -m-2 min-h-11 p-2 sm:m-0 sm:min-h-0 sm:p-0"
         >
           <span>Ver todos</span>
-          <ArrowRight className="w-3.5 h-3.5" />
+          <ArrowRight className="w-3.5 h-3.5 shrink-0" />
         </button>
       </div>
 
@@ -71,7 +72,10 @@ export default function LancamentosRecentes({
                     <td className="px-5 py-2.5 text-slate-500 font-bold whitespace-nowrap">
                       {item.data}
                     </td>
-                    <td className="px-3 py-2.5 font-bold text-slate-800 truncate max-w-40">
+                    <td
+                      className="px-3 py-2.5 font-bold text-slate-800 truncate max-w-32 sm:max-w-40 md:max-w-56"
+                      title={item.descricao}
+                    >
                       {item.descricao}
                     </td>
                     <td className="px-3 py-2.5 whitespace-nowrap">
