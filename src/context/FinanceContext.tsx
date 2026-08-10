@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useMemo } from "react";
+import { createContext, useContext, useState, useEffect, useMemo } from "react";
 import type {
   Categoria,
   Lancamento,
@@ -10,6 +10,34 @@ import type {
 import type { ReactNode } from "react";
 import { calcularTotaisLancamentos } from "../utils/financeiroUtils";
 import { PALETA_CORES, ICONES_META } from "../utils/paletaVisual";
+
+// Chaves de persistência no localStorage — mesmo prefixo já usado pelo tema
+// de cor (ver utils/temasCores.ts), pra manter tudo do Fy Control agrupado.
+const CHAVE_CATEGORIAS_STORAGE = "fycontrol:categorias";
+const CHAVE_LANCAMENTOS_STORAGE = "fycontrol:lancamentos";
+const CHAVE_METAS_STORAGE = "fycontrol:metas";
+
+// Lê um valor salvo no localStorage. Se não existir (primeira visita da
+// pessoa nesse navegador) ou o JSON estiver corrompido, cai no valor
+// padrão em vez de quebrar a aplicação.
+function lerDoStorage<T>(chave: string, valorPadrao: T): T {
+  try {
+    const bruto = window.localStorage.getItem(chave);
+    return bruto ? (JSON.parse(bruto) as T) : valorPadrao;
+  } catch {
+    return valorPadrao;
+  }
+}
+
+// Grava no localStorage silenciosamente — se falhar (modo privado, quota
+// excedida, etc.) o app continua funcionando só sem persistir a sessão.
+function salvarNoStorage<T>(chave: string, valor: T) {
+  try {
+    window.localStorage.setItem(chave, JSON.stringify(valor));
+  } catch {
+    // Sem persistência disponível — segue o app funcionando normalmente.
+  }
+}
 
 // Resultado de uma tentativa de exclusão de categoria — a UI decide o que
 // mostrar (bloqueado, pedir reatribuição, ou sucesso) a partir disso.
@@ -53,130 +81,92 @@ const FinanceContext = createContext<FinanceContextData>(
   {} as FinanceContextData,
 );
 
+// Categorias padrão do sistema — usadas apenas na primeira visita da
+// pessoa neste navegador (nada salvo ainda no localStorage). Inclui as
+// duas categorias "Outros", usadas como destino padrão ao excluir uma
+// categoria com vínculos. Não são dado pessoal, só rótulos/ícones prontos
+// pra facilitar o primeiro uso.
+const CATEGORIAS_PADRAO: Categoria[] = [
+  {
+    id: "cat_1",
+    nome: "Salário",
+    tipo: "receita",
+    cor: "#0F766E",
+    icone: "💰",
+    ativa: true,
+    ordem: 1,
+  },
+  {
+    id: "cat_2",
+    nome: "Aluguel",
+    tipo: "despesa",
+    cor: "#8B0000",
+    icone: "🏠",
+    ativa: true,
+    ordem: 1,
+  },
+  {
+    id: "cat_3",
+    nome: "Mercado",
+    tipo: "despesa",
+    cor: "#B45309",
+    icone: "🛒",
+    ativa: true,
+    ordem: 2,
+  },
+  {
+    id: "cat_4",
+    nome: "Farmácia",
+    tipo: "despesa",
+    cor: "#1D4ED8",
+    icone: "💊",
+    ativa: true,
+    ordem: 3,
+  },
+  {
+    id: "cat_5",
+    nome: "Internet",
+    tipo: "despesa",
+    cor: "#7E22CE",
+    icone: "📶",
+    ativa: true,
+    ordem: 4,
+  },
+  {
+    id: "cat_outros_receita",
+    nome: "Outros",
+    tipo: "receita",
+    cor: "#64748B",
+    icone: "📦",
+    ativa: true,
+    ordem: 99,
+    padrao: true,
+  },
+  {
+    id: "cat_outros_despesa",
+    nome: "Outros",
+    tipo: "despesa",
+    cor: "#64748B",
+    icone: "📦",
+    ativa: true,
+    ordem: 99,
+    padrao: true,
+  },
+];
+
 // 3. Provedor (Provider) que vai envelopar a nossa aplicação
 export const FinanceProvider = ({ children }: { children: ReactNode }) => {
-  // Estado inicial das Categorias — inclui as duas categorias "Outros",
-  // usadas como destino padrão ao excluir uma categoria com vínculos.
-  const [categorias, setCategorias] = useState<Categoria[]>([
-    {
-      id: "cat_1",
-      nome: "Salário",
-      tipo: "receita",
-      cor: "#0F766E",
-      icone: "💰",
-      ativa: true,
-      ordem: 1,
-    },
-    {
-      id: "cat_2",
-      nome: "Aluguel",
-      tipo: "despesa",
-      cor: "#8B0000",
-      icone: "🏠",
-      ativa: true,
-      ordem: 1,
-    },
-    {
-      id: "cat_3",
-      nome: "Mercado",
-      tipo: "despesa",
-      cor: "#B45309",
-      icone: "🛒",
-      ativa: true,
-      ordem: 2,
-    },
-    {
-      id: "cat_4",
-      nome: "Farmácia",
-      tipo: "despesa",
-      cor: "#1D4ED8",
-      icone: "💊",
-      ativa: true,
-      ordem: 3,
-    },
-    {
-      id: "cat_5",
-      nome: "Internet",
-      tipo: "despesa",
-      cor: "#7E22CE",
-      icone: "📶",
-      ativa: true,
-      ordem: 4,
-    },
-    {
-      id: "cat_outros_receita",
-      nome: "Outros",
-      tipo: "receita",
-      cor: "#64748B",
-      icone: "📦",
-      ativa: true,
-      ordem: 99,
-      padrao: true,
-    },
-    {
-      id: "cat_outros_despesa",
-      nome: "Outros",
-      tipo: "despesa",
-      cor: "#64748B",
-      icone: "📦",
-      ativa: true,
-      ordem: 99,
-      padrao: true,
-    },
-  ]);
+  // Categorias: carrega do localStorage se a pessoa já usou o app neste
+  // navegador; senão começa com o catálogo padrão acima.
+  const [categorias, setCategorias] = useState<Categoria[]>(() =>
+    lerDoStorage(CHAVE_CATEGORIAS_STORAGE, CATEGORIAS_PADRAO),
+  );
 
-  // Estado inicial dos Lançamentos (com dados mockados para teste)
-  const [lancamentos, setLancamentos] = useState<Lancamento[]>([
-    {
-      id: "1",
-      descricao: "Salário Agosto",
-      valor: 4500,
-      data: "05/08/2026",
-      tipo: "receita",
-      categoriaId: "cat_1",
-      formaPagamento: "Pix",
-    },
-    {
-      id: "2",
-      descricao: "Aluguel",
-      valor: 1000,
-      data: "06/08/2026",
-      tipo: "despesa",
-      tipoGasto: "fixo",
-      categoriaId: "cat_2",
-      formaPagamento: "Débito",
-    },
-    {
-      id: "3",
-      descricao: "Mercado Muffato",
-      valor: 250,
-      data: "07/08/2026",
-      tipo: "despesa",
-      tipoGasto: "variavel",
-      categoriaId: "cat_3",
-      formaPagamento: "Débito",
-    },
-    {
-      id: "4",
-      descricao: "Farmácia",
-      valor: 45,
-      data: "07/08/2026",
-      tipo: "despesa",
-      tipoGasto: "variavel",
-      categoriaId: "cat_4",
-      formaPagamento: "Pix",
-    },
-    {
-      id: "5",
-      descricao: "Internet",
-      valor: 120,
-      data: "08/08/2026",
-      tipo: "despesa",
-      tipoGasto: "fixo",
-      categoriaId: "cat_5",
-      formaPagamento: "Débito",
-    },
-  ]);
+  // Lançamentos: sem mock — pessoa nova sempre começa zerada. O que ela
+  // cadastrar é persistido e volta a aparecer em visitas futuras.
+  const [lancamentos, setLancamentos] = useState<Lancamento[]>(() =>
+    lerDoStorage<Lancamento[]>(CHAVE_LANCAMENTOS_STORAGE, []),
+  );
 
   // Função para cadastrar uma nova Categoria — preenche com valores padrão
   // tudo que não for informado (cor, ícone, ordem, status).
@@ -314,9 +304,25 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
     setLancamentos((prev) => prev.filter((item) => item.id !== id));
   };
 
-  // Metas financeiras — começa vazio (nada de dados fictícios); o usuário
-  // cadastra suas próprias metas pela Dashboard.
-  const [metas, setMetas] = useState<Meta[]>([]);
+  // Metas financeiras — sem mock, carrega do localStorage se existir;
+  // senão começa vazio e o usuário cadastra as próprias pela Dashboard.
+  const [metas, setMetas] = useState<Meta[]>(() =>
+    lerDoStorage<Meta[]>(CHAVE_METAS_STORAGE, []),
+  );
+
+  // Persiste cada estado no localStorage sempre que ele muda, para que a
+  // pessoa encontre os próprios dados salvos ao voltar (mesmo navegador).
+  useEffect(() => {
+    salvarNoStorage(CHAVE_CATEGORIAS_STORAGE, categorias);
+  }, [categorias]);
+
+  useEffect(() => {
+    salvarNoStorage(CHAVE_LANCAMENTOS_STORAGE, lancamentos);
+  }, [lancamentos]);
+
+  useEffect(() => {
+    salvarNoStorage(CHAVE_METAS_STORAGE, metas);
+  }, [metas]);
 
   // Função para cadastrar uma nova Meta — preenche cor/ícone/valor
   // acumulado com padrões sensatos quando não informados.
