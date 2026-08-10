@@ -1,8 +1,41 @@
 @import "tailwindcss";
 
+/* Tokens de identidade visual do Fy Control — únicos em todo o projeto.
+   Qualquer variação de vermelho, rosa etc. deve vir daqui, nunca de um
+   hex solto (#8B0000, #6b0000...) espalhado nos componentes. */
+@theme {
+  --color-brand: #8b0000; /* Vermelho escuro — cor principal da marca */
+  --color-brand-hover: #6b0000; /* Estado hover/active da cor principal */
+  --color-brand-soft: #ffe8e8; /* Rosa claro — fundo da sidebar e áreas suaves */
+
+  /* Animações de entrada usadas em drawers/modais e painéis expansíveis */
+  --animate-slide-in: slide-in 0.25s ease-out;
+  --animate-fade-in: fade-in 0.15s ease-out;
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @layer base {
   html,
   body {
-    @apply h-full w-full overflow-hidden bg-[#8B0000] text-slate-100 antialiased;
+    @apply h-full w-full overflow-hidden bg-brand text-slate-100 antialiased;
   }
 }

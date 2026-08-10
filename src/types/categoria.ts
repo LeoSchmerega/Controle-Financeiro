@@ -8,8 +8,7 @@ export interface Categoria {
   tipo: TipoCategoria;
   cor?: string;
   icone?: string;
-  isPadrao?: boolean; // Ajuste para resolver o erro no categoriasPadrao e useCategorias
+  isPadrao?: boolean;
 }
 
 export type PaginaAtiva = "Dashboard" | "Lançamentos" | "Categorias";
-export type Tema = "claro" | "escuro";

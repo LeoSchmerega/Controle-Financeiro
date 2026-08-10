@@ -13,6 +13,19 @@ export interface ItemCampo {
   valor: string;
 }
 
+export interface ModalLancamentoBaseProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSalvar: (total: number, campos: ItemCampo[]) => void;
+  camposIniciais?: ItemCampo[];
+  titulo: string;
+  icone: React.ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
+  camposPadrao: ItemCampo[];
+  placeholderRotulo?: string;
+  prefixoId: string;
+  textoBotaoAdicionar?: string;
+}
+
 export interface RegistroMensal {
   receitas: ItemCampo[];
   gastosFixos: ItemCampo[];
@@ -20,3 +33,6 @@ export interface RegistroMensal {
 }
 
 export type MapaFinanceiro = Record<string, RegistroMensal>;
+
+// src/types/index.ts
+export type NovoTipoCategoria = "despesa" | "receita";

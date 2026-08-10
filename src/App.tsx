@@ -1,89 +1,63 @@
 // src/App.tsx
 import { useState, useEffect } from "react";
-import Sidebar from "./components/SideBar";
-import HistoricoFinanceiro from "./components/HistoricoFinanceiroLancamento";
-import type { PaginaAtiva, Tema } from "./types/categoria";
-
-// --- SUB-COMPONENTES PARA PÁGINAS SIMPLES / PLACEHOLDERS ---
-function DashboardView() {
-  return (
-    <div className="space-y-6 max-w-7xl mx-auto animate-fade-in">
-      <header className="pb-4 border-b border-slate-200">
-        <h2 className="text-2xl font-bold text-slate-900">Dashboard</h2>
-        <p className="text-sm text-slate-500">
-          Visão geral do seu patrimônio e fluxo de caixa.
-        </p>
-      </header>
-    </div>
-  );
-}
-
-function CategoriaView() {
-  return (
-    <div className="space-y-6 max-w-7xl mx-auto animate-fade-in">
-      <header className="pb-4 border-b border-slate-200">
-        <h2 className="text-2xl font-bold text-slate-900">Categorias</h2>
-        <p className="text-sm text-slate-500">
-          Gerencie e organize suas categorias de gastos e receitas.
-        </p>
-      </header>
-
-      <div className="p-8 rounded-xl bg-slate-50 border border-slate-200 text-center">
-        <p className="text-slate-600 font-medium">
-          Em breve: Gerenciador de Categorias.
-        </p>
-      </div>
-    </div>
-  );
-}
+import Sidebar from "./components/SideBar/SideBar";
+import DashboardPage from "./pages/DashboardPage";
+import LancamentosPage from "./pages/LancamentosPage"; // <-- Importamos a nova página refatorada
+import CategoriasPage from "./pages/CategoriasPage";
+import type { PaginaAtiva } from "./types/categoria";
+import {
+  TEMAS_CORES,
+  CHAVE_TEMA_COR_STORAGE,
+  aplicarTemaCor,
+  obterTemaCorSalvo,
+} from "./utils/temasCores";
+import type { TemaCor } from "./utils/temasCores";
 
 // --- COMPONENTE PRINCIPAL ---
 export default function App() {
   const [paginaAtiva, setPaginaAtiva] = useState<PaginaAtiva>("Dashboard");
-  const [tema, setTema] = useState<Tema>("escuro");
+  const [temaCor, setTemaCor] = useState<TemaCor>(() => obterTemaCorSalvo());
 
-  // Sincroniza a classe 'dark' no <html> conforme o estado do tema
+  // Aplica o tema de cor escolhido (sobrescreve as variáveis CSS globais) e
+  // lembra a escolha entre sessões
   useEffect(() => {
-    const root = document.documentElement;
-    if (tema === "escuro") {
-      root.classList.add("dark");
-    } else {
-      root.classList.remove("dark");
-    }
-  }, [tema]);
+    aplicarTemaCor(temaCor);
+    localStorage.setItem(CHAVE_TEMA_COR_STORAGE, temaCor.id);
+  }, [temaCor]);
 
-  // Renderização condicional por página ativa
+  // Renderização condicional da página ativa
   const renderConteudoPagina = () => {
     switch (paginaAtiva) {
       case "Dashboard":
-        return <DashboardView />;
-      case "Lançamentos":
         return (
-          <div className="max-w-7xl mx-auto animate-fade-in">
-            <HistoricoFinanceiro />
-          </div>
+          <DashboardPage
+            onNavegarParaLancamentos={() => setPaginaAtiva("Lançamentos")}
+          />
         );
+      case "Lançamentos":
+        return <LancamentosPage />; // <-- Agora chamamos a nova página aqui de forma limpa!
       case "Categorias":
-        return <CategoriaView />;
+        return <CategoriasPage />;
       default:
-        return <DashboardView />;
+        return (
+          <DashboardPage
+            onNavegarParaLancamentos={() => setPaginaAtiva("Lançamentos")}
+          />
+        );
     }
   };
 
   return (
-    /* Moldura externa com h-dvh para suporte responsivo mobile/desktop */
-    <div className="h-dvh w-screen p-2 sm:p-4 md:p-6 lg:p-10 flex items-center justify-center bg-[#8B0000] box-border overflow-hidden">
-      {/* Moldura Interna */}
+    <div className="h-dvh w-screen p-2 sm:p-4 md:p-6 lg:p-10 flex items-center justify-center bg-brand box-border overflow-hidden">
       <div className="flex h-full w-full overflow-hidden rounded-2xl sm:rounded-3xl lg:rounded-[40px] bg-white text-slate-900 shadow-2xl">
-        {/* Sidebar */}
         <Sidebar
           paginaAtiva={paginaAtiva}
           onSelectPagina={setPaginaAtiva}
-          tema={tema}
-          onToggleTema={setTema}
+          temasCores={TEMAS_CORES}
+          temaCorAtivo={temaCor}
+          onTrocarTemaCor={setTemaCor}
         />
 
-        {/* Conteúdo Dinâmico */}
         <main
           id="main-content"
           tabIndex={-1}
