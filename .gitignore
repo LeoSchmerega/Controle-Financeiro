@@ -23,5 +23,3 @@ dist-ssr
 *.sln
 *.sw?
 
-# Configurações locais do Claude Code (específicas da máquina)
-.claude/settings.local.json
