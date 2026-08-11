@@ -95,7 +95,7 @@ export default function TabelaLancamentos({
                           aria-label={`Editar ${item.descricao}`}
                           className="p-2.5 text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                         >
-                          <Edit2 className="w-4 h-4" />
+                          <Edit2 className="w-8 h-8" />
                         </button>
                         <button
                           type="button"
@@ -103,7 +103,7 @@ export default function TabelaLancamentos({
                           aria-label={`Excluir ${item.descricao}`}
                           className="p-2.5 text-slate-400 hover:text-rose-600 bg-slate-50 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-8 h-8" />
                         </button>
                       </div>
                     </td>
