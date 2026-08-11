@@ -126,27 +126,27 @@ export default function MetasFinanceiras() {
                       onClick={() => setMetaParaContribuir(meta)}
                       title="Adicionar valor"
                       aria-label={`Adicionar valor à meta ${meta.nome}`}
-                      className="w-6 h-6 flex items-center justify-center text-slate-400 hover:text-emerald-600 bg-slate-50 hover:bg-emerald-50 rounded-md transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                      className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-emerald-600 bg-slate-50 hover:bg-emerald-50 rounded-md transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                     >
-                      <PiggyBank className="w-3 h-3" />
+                      <PiggyBank className="w-5 h-5" />
                     </button>
                     <button
                       type="button"
                       onClick={() => handleAbrirEdicao(meta)}
                       title="Editar"
                       aria-label={`Editar meta ${meta.nome}`}
-                      className="w-6 h-6 flex items-center justify-center text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-md transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                      className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-md transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                     >
-                      <Edit2 className="w-3 h-3" />
+                      <Edit2 className="w-5 h-5" />
                     </button>
                     <button
                       type="button"
                       onClick={() => setMetaParaExcluir(meta)}
                       title="Excluir"
                       aria-label={`Excluir meta ${meta.nome}`}
-                      className="w-6 h-6 flex items-center justify-center text-slate-400 hover:text-rose-600 bg-slate-50 hover:bg-rose-50 rounded-md transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                      className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-rose-600 bg-slate-50 hover:bg-rose-50 rounded-md transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                     >
-                      <Trash2 className="w-3 h-3" />
+                      <Trash2 className="w-5 h-5" />
                     </button>
                   </div>
                 </div>

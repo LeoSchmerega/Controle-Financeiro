@@ -39,3 +39,11 @@
     @apply h-full w-full overflow-hidden bg-brand text-slate-100 antialiased;
   }
 }
+
+/* Recharts marca setores/eixos como focáveis (tabIndex), o que faz o
+   navegador desenhar um retângulo de foco (preto/azul) por cima do
+   gráfico ao clicar. Os gráficos não têm navegação por teclado, então
+   removemos esse contorno. */
+.recharts-wrapper *:focus {
+  outline: none;
+}
