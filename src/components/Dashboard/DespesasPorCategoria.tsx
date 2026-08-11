@@ -87,7 +87,7 @@ export default function DespesasPorCategoria({
             </ResponsiveContainer>
           </div>
 
-          <div className="flex-1 w-full min-w-0 flex flex-col gap-2.5 max-h-48 overflow-y-auto pr-1">
+          <div className="flex-1 w-full min-w-0 flex flex-col gap-2.5 max-h-48 overflow-y-auto pr-1 scrollbar-gutter-stable">
             {despesasPorCategoria.map((c) => (
               <div key={c.categoriaId} className="flex items-center gap-2.5">
                 <span

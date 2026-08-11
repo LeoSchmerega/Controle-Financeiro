@@ -34,7 +34,7 @@ export default function DashboardHeader({
         </p>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-1.5 bg-white px-2 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 shadow-xs">
           <button
             type="button"

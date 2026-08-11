@@ -1,7 +1,8 @@
 // src/App.tsx
 import { useState, useEffect } from "react";
-import { Menu } from "lucide-react";
+import { Menu, RefreshCw } from "lucide-react";
 import Sidebar from "./components/SideBar/SideBar";
+import { usePullToRefresh } from "./hooks/usePullToRefresh";
 import DashboardPage from "./pages/DashboardPage";
 import LancamentosPage from "./pages/LancamentosPage"; // <-- Importamos a nova página refatorada
 import CategoriasPage from "./pages/CategoriasPage";
@@ -21,6 +22,11 @@ export default function App() {
   // Drawer da sidebar em mobile (< md) — sempre fechado por padrão; em md+
   // a sidebar ignora esse estado e fica sempre visível (ver SideBar.tsx).
   const [isSidebarAberta, setIsSidebarAberta] = useState(false);
+
+  // Puxar para atualizar (mobile) — arrastar pra baixo com o conteúdo já
+  // no topo do <main> recarrega a página, como em apps nativos.
+  const { containerRef, pullDistance, isRefreshing, handlers } =
+    usePullToRefresh<HTMLElement>();
 
   // Aplica o tema de cor escolhido (sobrescreve as variáveis CSS globais) e
   // lembra a escolha entre sessões
@@ -94,9 +100,30 @@ export default function App() {
 
           <main
             id="main-content"
+            ref={containerRef}
             tabIndex={-1}
-            className="flex-1 h-full overflow-y-auto bg-white p-4 sm:p-6 md:p-8 outline-none"
+            onTouchStart={handlers.onTouchStart}
+            onTouchMove={handlers.onTouchMove}
+            onTouchEnd={handlers.onTouchEnd}
+            className="flex-1 h-full overflow-y-auto scrollbar-gutter-stable bg-white p-4 sm:p-6 md:p-8 outline-none"
           >
+            {/* Indicador do "puxar para atualizar" — só existe em mobile
+                (< md); em desktop o gesto de toque nem dispara. */}
+            <div
+              className="md:hidden flex items-center justify-center overflow-hidden transition-[height] duration-200 ease-out"
+              style={{ height: pullDistance, marginBottom: pullDistance > 0 ? 8 : 0 }}
+              aria-hidden="true"
+            >
+              <RefreshCw
+                className={`w-5 h-5 text-brand ${isRefreshing ? "animate-spin" : ""}`}
+                style={
+                  isRefreshing
+                    ? undefined
+                    : { transform: `rotate(${pullDistance * 3}deg)` }
+                }
+              />
+            </div>
+
             {renderConteudoPagina()}
           </main>
         </div>

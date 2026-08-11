@@ -32,7 +32,7 @@ export default function HeaderCategoria({
       </div>
 
       {/* Controles do Lado Direito (Seletor de Mês + Botão Nova Categoria) */}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         {/* Seletor de Mês — mesmo padrão visual das outras telas */}
         <div className="flex items-center gap-1.5 bg-white px-2 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 shadow-xs">
           <button
