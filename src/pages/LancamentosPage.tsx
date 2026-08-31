@@ -1,7 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import DrawerLancamento from "../components/Lancamentos/DrawerLancamento";
 import CardsResumo from "../components/Lancamentos/CardsResumo";
 import TabelaLancamentos from "../components/Lancamentos/TabelaLancamentos";
+import ModalExcluirLancamentoFixo from "../components/Lancamentos/ModalExcluirLancamentoFixo";
 import { useFinance } from "../context/FinanceContext";
 import {
   Plus,
@@ -38,6 +39,8 @@ export default function LancamentosPage() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [lancamentoEditando, setLancamentoEditando] =
     useState<Lancamento | null>(null);
+  const [lancamentoParaExcluir, setLancamentoParaExcluir] =
+    useState<Lancamento | null>(null);
   const [busca, setBusca] = useState("");
   const [filtroTipo, setFiltroTipo] = useState<"todos" | TipoTransacao>(
     "todos",
@@ -52,7 +55,12 @@ export default function LancamentosPage() {
   const [mostrarFiltrosAvancados, setMostrarFiltrosAvancados] =
     useState(false);
 
-  const { lancamentos, categorias, removerLancamento } = useFinance();
+  const {
+    lancamentos,
+    categorias,
+    removerLancamento,
+    garantirLancamentosFixosAte,
+  } = useFinance();
 
   // Opções de mês de referência, geradas a partir das datas já lançadas
   const opcoesMeses = useMemo(
@@ -62,6 +70,14 @@ export default function LancamentosPage() {
   const [mesSelecionado, setMesSelecionado] = useState<string>(
     opcoesMeses[0]?.valor ?? mesAnoAtual(),
   );
+
+  // Ao navegar para um mês além da janela padrão de geração (12 meses à
+  // frente do mês atual), estende a materialização das despesas fixas até
+  // ele — assim elas também aparecem em qualquer mês futuro visitado.
+  useEffect(() => {
+    garantirLancamentosFixosAte(mesSelecionado);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mesSelecionado]);
 
   // Garante que o mês atualmente selecionado apareça no <select>, mesmo que
   // ele não tenha nenhum lançamento (navegado via setas ‹ ›)
@@ -355,11 +371,26 @@ export default function LancamentosPage() {
         lancamentos={lancamentosFiltrados}
         categorias={categorias}
         busca={busca}
-        onRemover={removerLancamento}
+        onSolicitarExclusao={(lancamento) => {
+          // Despesa fixa recorrente pede confirmação (só este mês x parar
+          // de repetir); lançamento avulso é removido direto, como antes.
+          if (lancamento.recorrenciaFixaId) {
+            setLancamentoParaExcluir(lancamento);
+          } else {
+            removerLancamento(lancamento.id);
+          }
+        }}
         onEditar={(lancamento) => {
           setLancamentoEditando(lancamento);
           setIsDrawerOpen(true);
         }}
+      />
+
+      {/* Confirmação de exclusão de despesa fixa recorrente */}
+      <ModalExcluirLancamentoFixo
+        isOpen={lancamentoParaExcluir !== null}
+        onClose={() => setLancamentoParaExcluir(null)}
+        lancamento={lancamentoParaExcluir}
       />
 
       {/* Drawer do Formulário */}

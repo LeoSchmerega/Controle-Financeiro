@@ -120,3 +120,38 @@ export function deslocarMesAno(mesAno: string, quantidadeMeses: number): string 
   const mesResultado = String(data.getMonth() + 1).padStart(2, "0");
   return `${data.getFullYear()}-${mesResultado}`;
 }
+
+// Soma N meses a uma data (dd/mm/yyyy ou yyyy-mm-dd), mantendo o dia sempre
+// que possível — usado para gerar as datas das parcelas de uma compra
+// parcelada. Se o dia não existir no mês de destino (ex: dia 31 em
+// fevereiro), cai no último dia daquele mês.
+export function somarMesesAData(valor: string, quantidadeMeses: number): string {
+  const data = paraObjetoData(valor);
+  if (!data) return valor;
+
+  const dia = data.getDate();
+  const destino = new Date(data.getFullYear(), data.getMonth() + quantidadeMeses, 1);
+  const ultimoDiaDoMesDestino = new Date(
+    destino.getFullYear(),
+    destino.getMonth() + 1,
+    0,
+  ).getDate();
+  destino.setDate(Math.min(dia, ultimoDiaDoMesDestino));
+
+  const dd = String(destino.getDate()).padStart(2, "0");
+  const mm = String(destino.getMonth() + 1).padStart(2, "0");
+  return `${dd}/${mm}/${destino.getFullYear()}`;
+}
+
+// Monta a data (dd/mm/yyyy) de uma ocorrência mensal a partir de uma
+// competência "yyyy-mm" e um dia do mês desejado — usado para materializar
+// as ocorrências de uma despesa fixa recorrente. Se o dia não existir
+// naquele mês (ex: dia 31 em abril), cai no último dia do mês.
+export function competenciaEDiaParaData(mesAno: string, dia: number): string {
+  const [ano, mes] = mesAno.split("-").map(Number);
+  if (!ano || !mes) return "";
+
+  const ultimoDiaDoMes = new Date(ano, mes, 0).getDate();
+  const diaFinal = Math.min(Math.max(dia, 1), ultimoDiaDoMes);
+  return `${String(diaFinal).padStart(2, "0")}/${String(mes).padStart(2, "0")}/${ano}`;
+}

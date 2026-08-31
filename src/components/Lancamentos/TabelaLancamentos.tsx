@@ -1,12 +1,14 @@
 // src/components/Lancamentos/TabelaLancamentos.tsx
-import { Edit2, Trash2 } from "lucide-react";
+import { Edit2, Trash2, Repeat } from "lucide-react";
 import type { Categoria, Lancamento } from "../../types/financeiro";
 
 interface TabelaLancamentosProps {
   lancamentos: Lancamento[];
   categorias: Categoria[];
   busca: string;
-  onRemover: (id: string) => void;
+  // Decide sozinho como excluir: direto, se for um lançamento avulso, ou
+  // via confirmação, se fizer parte de uma despesa fixa recorrente.
+  onSolicitarExclusao: (lancamento: Lancamento) => void;
   onEditar: (lancamento: Lancamento) => void;
 }
 
@@ -14,7 +16,7 @@ export default function TabelaLancamentos({
   lancamentos,
   categorias,
   busca,
-  onRemover,
+  onSolicitarExclusao,
   onEditar,
 }: TabelaLancamentosProps) {
   return (
@@ -54,7 +56,22 @@ export default function TabelaLancamentos({
                       {item.data}
                     </td>
                     <td className="p-4 font-bold text-slate-800">
-                      {item.descricao}
+                      <span className="inline-flex items-center gap-1.5">
+                        {item.descricao}
+                        {item.recorrenciaFixaId && (
+                          <span
+                            title="Despesa fixa recorrente"
+                            className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-red-50 text-brand shrink-0"
+                          >
+                            <Repeat className="w-2.5 h-2.5" />
+                          </span>
+                        )}
+                        {item.parcela && (
+                          <span className="text-[10px] font-bold text-slate-400 shrink-0">
+                            {item.parcela.numero}/{item.parcela.total}
+                          </span>
+                        )}
+                      </span>
                     </td>
                     <td className="p-4">
                       <span className="inline-flex items-center gap-2 font-semibold">
@@ -99,7 +116,7 @@ export default function TabelaLancamentos({
                         </button>
                         <button
                           type="button"
-                          onClick={() => onRemover(item.id)}
+                          onClick={() => onSolicitarExclusao(item)}
                           aria-label={`Excluir ${item.descricao}`}
                           className="p-2.5 text-slate-400 hover:text-rose-600 bg-slate-50 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                         >

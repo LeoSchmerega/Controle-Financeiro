@@ -28,6 +28,32 @@ export interface Lancamento {
   categoriaId: string;
   formaPagamento: "Pix" | "Débito" | "Crédito" | "Dinheiro" | "Boleto";
   observacao?: string;
+  // Presente quando o lançamento é uma parcela de uma compra parcelada —
+  // liga todas as parcelas da mesma compra pelo mesmo grupoId.
+  parcela?: {
+    grupoId: string;
+    numero: number; // parcela atual (1-based)
+    total: number; // total de parcelas da compra
+  };
+  // Presente quando o lançamento é uma ocorrência mensal de uma despesa
+  // fixa recorrente — aponta para o id da SerieFixa que o gerou.
+  recorrenciaFixaId?: string;
+}
+
+// "Molde" de uma despesa fixa recorrente (ex: Aluguel, Internet). A partir
+// dela o FinanceContext materializa um Lancamento por mês, todo mês, até
+// a pessoa encerrar a recorrência manualmente.
+export interface SerieFixa {
+  id: string;
+  descricao: string;
+  valor: number;
+  categoriaId: string;
+  formaPagamento: Lancamento["formaPagamento"];
+  observacao?: string;
+  diaDoMes: number; // dia do mês em que o lançamento é gerado
+  mesInicio: string; // competência "yyyy-mm" da primeira ocorrência
+  mesFim: string | null; // competência "yyyy-mm" da última ocorrência; null = sem fim (continua indefinidamente)
+  mesesExcluidos: string[]; // competências "yyyy-mm" removidas manualmente (a recorrência continua nos demais meses)
 }
 
 // Totais agregados de um conjunto de lançamentos — usados nos Cards de

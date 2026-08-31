@@ -1,5 +1,12 @@
 import { useState, useEffect } from "react";
-import { X, ArrowUpCircle, ArrowDownCircle, Plus } from "lucide-react";
+import {
+  X,
+  ArrowUpCircle,
+  ArrowDownCircle,
+  Plus,
+  Repeat,
+  Info,
+} from "lucide-react";
 import { useFinance } from "../../context/FinanceContext";
 import { dataParaISO, dataParaBR } from "../../utils/dataUtils";
 import { formatarValorMonetario } from "../../utils/valorUtils";
@@ -9,6 +16,9 @@ import type {
   TipoGasto,
   Lancamento,
 } from "../../types/financeiro";
+
+// Opções de parcelamento oferecidas no cadastro de uma despesa variável.
+const OPCOES_PARCELAS = Array.from({ length: 24 }, (_, i) => i + 1);
 
 interface DrawerLancamentoProps {
   isOpen: boolean;
@@ -35,6 +45,7 @@ export default function DrawerLancamento({
   const [formaPagamento, setFormaPagamento] =
     useState<Lancamento["formaPagamento"]>("Pix");
   const [observacao, setObservacao] = useState("");
+  const [parcelas, setParcelas] = useState(1);
 
   // Preenche (ou limpa) o formulário sempre que o drawer é aberto
   useEffect(() => {
@@ -49,6 +60,7 @@ export default function DrawerLancamento({
       setData(dataParaISO(lancamentoEditando.data));
       setFormaPagamento(lancamentoEditando.formaPagamento);
       setObservacao(lancamentoEditando.observacao ?? "");
+      setParcelas(1);
     } else {
       setTipo("receita");
       setTipoGasto("variavel");
@@ -58,8 +70,15 @@ export default function DrawerLancamento({
       setData(new Date().toISOString().slice(0, 10));
       setFormaPagamento("Pix");
       setObservacao("");
+      setParcelas(1);
     }
   }, [isOpen, lancamentoEditando]);
+
+  // Parcelamento só faz sentido para uma despesa variável nova — uma
+  // despesa fixa já se repete sozinha todo mês, e o número de parcelas de
+  // uma compra já lançada não pode mais ser alterado.
+  const podeParcelar =
+    !emEdicao && tipo === "despesa" && tipoGasto === "variavel";
 
   if (!isOpen) return null;
 
@@ -92,7 +111,10 @@ export default function DrawerLancamento({
     if (emEdicao && lancamentoEditando) {
       editarLancamento(lancamentoEditando.id, dadosLancamento);
     } else {
-      adicionarLancamento(dadosLancamento);
+      adicionarLancamento(
+        dadosLancamento,
+        podeParcelar && parcelas > 1 ? { parcelas } : undefined,
+      );
     }
 
     onClose();
@@ -180,6 +202,55 @@ export default function DrawerLancamento({
                     Variável
                   </button>
                 </div>
+
+                {/* Aviso: gasto fixo se repete sozinho todo mês */}
+                {tipoGasto === "fixo" && (
+                  <div className="mt-2 flex items-start gap-2 bg-red-50 border border-brand/20 rounded-xl p-2.5 text-[11px] text-brand font-medium">
+                    <Repeat className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                    <span>
+                      {emEdicao && lancamentoEditando?.recorrenciaFixaId
+                        ? "Este lançamento faz parte de uma despesa fixa recorrente. As alterações valem para esta e para as próximas ocorrências ainda não geradas."
+                        : "Esse gasto será lançado automaticamente todo mês, até você removê-lo manualmente."}
+                    </span>
+                  </div>
+                )}
+
+                {/* Aviso: parcela de uma compra já parcelada, não editável */}
+                {emEdicao && lancamentoEditando?.parcela && (
+                  <div className="mt-2 flex items-start gap-2 bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-[11px] text-slate-500 font-medium">
+                    <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                    <span>
+                      Parcela {lancamentoEditando.parcela.numero} de{" "}
+                      {lancamentoEditando.parcela.total}. O parcelamento não
+                      pode ser alterado depois de criado.
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Parcelamento — só para despesa variável nova */}
+            {podeParcelar && (
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Parcelamento
+                </label>
+                <select
+                  value={parcelas}
+                  onChange={(e) => setParcelas(Number(e.target.value))}
+                  className="w-full p-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                >
+                  {OPCOES_PARCELAS.map((n) => (
+                    <option key={n} value={n}>
+                      {n === 1 ? "À vista (1x)" : `${n}x`}
+                    </option>
+                  ))}
+                </select>
+                {parcelas > 1 && (
+                  <span className="text-[10px] text-slate-400 mt-1 block">
+                    Serão criados {parcelas} lançamentos mensais.
+                  </span>
+                )}
               </div>
             )}
 
@@ -245,6 +316,15 @@ export default function DrawerLancamento({
                   required
                   className="w-full p-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand"
                 />
+                {podeParcelar && parcelas > 1 && !!parseFloat(valor.replace(",", ".")) && (
+                  <span className="text-[10px] text-slate-400 mt-1 block">
+                    {parcelas}x de R${" "}
+                    {(parseFloat(valor.replace(",", ".")) / parcelas).toLocaleString(
+                      "pt-BR",
+                      { minimumFractionDigits: 2 },
+                    )}
+                  </span>
+                )}
               </div>
             </div>
             <span className="text-[10px] text-slate-400 -mt-2.5 block">
