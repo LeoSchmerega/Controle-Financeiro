@@ -6,6 +6,8 @@ import { usePullToRefresh } from "./hooks/usePullToRefresh";
 import DashboardPage from "./pages/DashboardPage";
 import LancamentosPage from "./pages/LancamentosPage"; // <-- Importamos a nova página refatorada
 import CategoriasPage from "./pages/CategoriasPage";
+import ConfiguracoesPage from "./pages/ConfiguracoesPage";
+import ContasPage from "./pages/ContasPage";
 import type { PaginaAtiva } from "./types/categoria";
 import {
   TEMAS_CORES,
@@ -14,9 +16,13 @@ import {
   obterTemaCorSalvo,
 } from "./utils/temasCores";
 import type { TemaCor } from "./utils/temasCores";
+import { useFinance } from "./context/FinanceContext";
+import { useAuth } from "./context/AuthContext";
 
 // --- COMPONENTE PRINCIPAL ---
 export default function App() {
+  const { carregando, erroCarregamento, erroSincronizacao } = useFinance();
+  const { usuario, sair } = useAuth();
   const [paginaAtiva, setPaginaAtiva] = useState<PaginaAtiva>("Dashboard");
   const [temaCor, setTemaCor] = useState<TemaCor>(() => obterTemaCorSalvo());
   // Drawer da sidebar em mobile (< md) — sempre fechado por padrão; em md+
@@ -37,6 +43,33 @@ export default function App() {
 
   // Renderização condicional da página ativa
   const renderConteudoPagina = () => {
+    // Enquanto os dados não chegam do repositório, nenhuma página monta —
+    // assim elas nunca calculam nada em cima de listas ainda vazias.
+    if (carregando) {
+      return (
+        <div
+          className="flex h-full items-center justify-center gap-3 text-slate-500"
+          role="status"
+        >
+          <RefreshCw className="w-5 h-5 animate-spin text-brand" />
+          <span className="text-sm font-medium">Carregando seus dados...</span>
+        </div>
+      );
+    }
+
+    // Sem os dados carregados, nada pode ser salvo com segurança — mostra o
+    // motivo em vez das telas (Configurações continua acessível).
+    if (erroCarregamento && paginaAtiva !== "Configurações") {
+      return (
+        <div className="flex h-full items-center justify-center">
+          <div role="alert" className="max-w-md rounded-2xl bg-red-50 p-6 text-sm text-red-700">
+            <p className="font-bold mb-1">Não foi possível carregar seus dados.</p>
+            <p>{erroCarregamento}</p>
+          </div>
+        </div>
+      );
+    }
+
     switch (paginaAtiva) {
       case "Dashboard":
         return (
@@ -48,6 +81,10 @@ export default function App() {
         return <LancamentosPage />; // <-- Agora chamamos a nova página aqui de forma limpa!
       case "Categorias":
         return <CategoriasPage />;
+      case "Configurações":
+        return <ConfiguracoesPage />;
+      case "Contas":
+        return <ContasPage />;
       default:
         return (
           <DashboardPage
@@ -68,6 +105,8 @@ export default function App() {
           onTrocarTemaCor={setTemaCor}
           isOpen={isSidebarAberta}
           onClose={() => setIsSidebarAberta(false)}
+          emailUsuario={usuario?.email}
+          onSair={sair}
         />
 
         {/* Overlay escurecido atrás do drawer — só existe em mobile (< md)
@@ -123,6 +162,24 @@ export default function App() {
                 }
               />
             </div>
+
+            {erroSincronizacao && (
+              <div
+                role="alert"
+                className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700"
+              >
+                <span>
+                  Algumas alterações não foram salvas. {erroSincronizacao}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  className="font-bold underline cursor-pointer"
+                >
+                  Recarregar
+                </button>
+              </div>
+            )}
 
             {renderConteudoPagina()}
           </main>

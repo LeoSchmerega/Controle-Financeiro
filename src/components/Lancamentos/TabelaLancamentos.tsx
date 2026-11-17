@@ -1,6 +1,7 @@
 // src/components/Lancamentos/TabelaLancamentos.tsx
 import { Edit2, Trash2, Repeat } from "lucide-react";
 import type { Categoria, Lancamento } from "../../types/financeiro";
+import { useFinance } from "../../context/FinanceContext";
 
 interface TabelaLancamentosProps {
   lancamentos: Lancamento[];
@@ -19,6 +20,8 @@ export default function TabelaLancamentos({
   onSolicitarExclusao,
   onEditar,
 }: TabelaLancamentosProps) {
+  const { contas } = useFinance();
+
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-xs overflow-hidden">
       {/* Container para scroll horizontal no mobile */}
@@ -31,7 +34,7 @@ export default function TabelaLancamentos({
               <th className="p-4">Categoria</th>
               <th className="p-4">Tipo</th>
               <th className="p-4">Valor</th>
-              <th className="p-4">Forma Pagamento</th>
+              <th className="p-4">Pagamento</th>
               <th className="p-4 text-center">Ações</th>
             </tr>
           </thead>
@@ -103,6 +106,20 @@ export default function TabelaLancamentos({
                     </td>
                     <td className="p-4 text-slate-500">
                       {item.formaPagamento}
+                      {/* Conta/cartão vinculado, com a cor dele */}
+                      {(() => {
+                        const conta = contas.find((c) => c.id === item.contaId);
+                        return conta ? (
+                          <span className="mt-0.5 flex items-center gap-1.5 text-[11px] font-bold text-slate-700">
+                            <span
+                              className="w-2 h-2 rounded-full shrink-0"
+                              style={{ backgroundColor: conta.cor }}
+                              aria-hidden="true"
+                            />
+                            {conta.nome}
+                          </span>
+                        ) : null;
+                      })()}
                     </td>
                     <td className="p-4">
                       <div className="flex items-center justify-center gap-2">

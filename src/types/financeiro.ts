@@ -38,6 +38,8 @@ export interface Lancamento {
   // Presente quando o lançamento é uma ocorrência mensal de uma despesa
   // fixa recorrente — aponta para o id da SerieFixa que o gerou.
   recorrenciaFixaId?: string;
+  // Conta/cartão de onde o dinheiro saiu (ou onde entrou, se receita)
+  contaId?: string;
 }
 
 // "Molde" de uma despesa fixa recorrente (ex: Aluguel, Internet). A partir
@@ -54,6 +56,7 @@ export interface SerieFixa {
   mesInicio: string; // competência "yyyy-mm" da primeira ocorrência
   mesFim: string | null; // competência "yyyy-mm" da última ocorrência; null = sem fim (continua indefinidamente)
   mesesExcluidos: string[]; // competências "yyyy-mm" removidas manualmente (a recorrência continua nos demais meses)
+  contaId?: string; // conta/cartão em que a despesa fixa é paga
 }
 
 // Totais agregados de um conjunto de lançamentos — usados nos Cards de
@@ -79,3 +82,28 @@ export interface Meta {
 // dentro do FinanceContext quando não informados.
 export type NovaMetaInput = Pick<Meta, "nome" | "valorObjetivo"> &
   Partial<Pick<Meta, "valorAcumulado" | "cor" | "icone">>;
+
+// Conta ou cartão onde o dinheiro entra/sai. Nenhum dado sensível do
+// cartão é guardado — só o necessário para organizar e calcular a fatura.
+export type TipoConta =
+  | "cartao_credito"
+  | "conta_corrente"
+  | "carteira_digital"
+  | "dinheiro";
+
+export interface Conta {
+  id: string;
+  nome: string; // apelido, ex: "Nubank", "Inter Black"
+  tipo: TipoConta;
+  cor: string; // Hex
+  ativa: boolean; // inativas somem dos seletores, mas mantêm o histórico
+  ordem: number;
+  // Só para cartão de crédito:
+  ultimosDigitos?: string; // opcional, 4 dígitos, só para diferenciar cartões
+  diaFechamento?: number; // dia em que a fatura fecha (1–31)
+  diaVencimento?: number; // dia em que a fatura vence (1–31)
+  limite?: number;
+}
+
+export type NovaContaInput = Omit<Conta, "id" | "ordem" | "ativa"> &
+  Partial<Pick<Conta, "ativa">>;

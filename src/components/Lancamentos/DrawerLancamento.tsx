@@ -10,6 +10,7 @@ import {
 import { useFinance } from "../../context/FinanceContext";
 import { dataParaISO, dataParaBR } from "../../utils/dataUtils";
 import { formatarValorMonetario } from "../../utils/valorUtils";
+import { tiposDeContaParaForma } from "../../utils/contaUtils";
 import ModalCategoriaRapida from "./ModalCategoriaRapida";
 import type {
   TipoTransacao,
@@ -32,7 +33,8 @@ export default function DrawerLancamento({
   onClose,
   lancamentoEditando = null,
 }: DrawerLancamentoProps) {
-  const { categorias, adicionarLancamento, editarLancamento } = useFinance();
+  const { categorias, contas, adicionarLancamento, editarLancamento } =
+    useFinance();
   const emEdicao = lancamentoEditando !== null;
 
   const [isCategoriaModalOpen, setIsCategoriaModalOpen] = useState(false);
@@ -46,6 +48,7 @@ export default function DrawerLancamento({
     useState<Lancamento["formaPagamento"]>("Pix");
   const [observacao, setObservacao] = useState("");
   const [parcelas, setParcelas] = useState(1);
+  const [contaId, setContaId] = useState("");
 
   // Preenche (ou limpa) o formulário sempre que o drawer é aberto
   useEffect(() => {
@@ -61,6 +64,7 @@ export default function DrawerLancamento({
       setFormaPagamento(lancamentoEditando.formaPagamento);
       setObservacao(lancamentoEditando.observacao ?? "");
       setParcelas(1);
+      setContaId(lancamentoEditando.contaId ?? "");
     } else {
       setTipo("receita");
       setTipoGasto("variavel");
@@ -71,6 +75,7 @@ export default function DrawerLancamento({
       setFormaPagamento("Pix");
       setObservacao("");
       setParcelas(1);
+      setContaId("");
     }
   }, [isOpen, lancamentoEditando]);
 
@@ -81,6 +86,27 @@ export default function DrawerLancamento({
     !emEdicao && tipo === "despesa" && tipoGasto === "variavel";
 
   if (!isOpen) return null;
+
+  // Contas que combinam com a forma de pagamento escolhida (ex: Crédito →
+  // só cartões). A conta já vinculada aparece mesmo se estiver inativa.
+  const contasCompativeis = (forma: Lancamento["formaPagamento"]) => {
+    const tipos = tiposDeContaParaForma(forma);
+    return contas
+      .filter((c) => tipos.includes(c.tipo) && (c.ativa || c.id === contaId))
+      .sort((a, b) => a.ordem - b.ordem);
+  };
+  const contasDisponiveis = contasCompativeis(formaPagamento);
+  const ehCredito = formaPagamento === "Crédito";
+
+  // Ao trocar a forma de pagamento, a conta escolhida pode deixar de fazer
+  // sentido (ex: Pix → Crédito). Se só houver uma opção, já seleciona.
+  const handleTrocarFormaPagamento = (forma: Lancamento["formaPagamento"]) => {
+    setFormaPagamento(forma);
+    const opcoes = contasCompativeis(forma);
+    if (!opcoes.some((c) => c.id === contaId)) {
+      setContaId(opcoes.length === 1 ? opcoes[0].id : "");
+    }
+  };
 
   // Troca o tipo (Receita/Despesa) e reseta a categoria, que não é mais válida
   const handleTrocarTipo = (novoTipo: TipoTransacao) => {
@@ -106,6 +132,7 @@ export default function DrawerLancamento({
       categoriaId,
       formaPagamento,
       observacao,
+      contaId: contaId || undefined,
     };
 
     if (emEdicao && lancamentoEditando) {
@@ -124,7 +151,7 @@ export default function DrawerLancamento({
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/30 backdrop-blur-xs">
-      <div className="w-full max-w-md bg-white h-full shadow-2xl p-6 flex flex-col justify-between animate-slide-in">
+      <div className="w-full max-w-md bg-white h-full shadow-2xl p-6 flex flex-col justify-between animate-slide-in overflow-y-auto">
         <div>
           {/* Header do Drawer */}
           <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-5">
@@ -353,7 +380,7 @@ export default function DrawerLancamento({
                 <select
                   value={formaPagamento}
                   onChange={(e) =>
-                    setFormaPagamento(
+                    handleTrocarFormaPagamento(
                       e.target.value as Lancamento["formaPagamento"],
                     )
                   }
@@ -366,6 +393,43 @@ export default function DrawerLancamento({
                   <option value="Boleto">Boleto</option>
                 </select>
               </div>
+            </div>
+
+            {/* Conta / Cartão — filtrado pela forma de pagamento */}
+            <div>
+              <label
+                htmlFor="lancamento-conta"
+                className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1"
+              >
+                {ehCredito ? "Cartão" : "Conta"}{" "}
+                <span className="text-slate-400 font-normal normal-case">
+                  (opcional)
+                </span>
+              </label>
+              {contasDisponiveis.length > 0 ? (
+                <select
+                  id="lancamento-conta"
+                  value={contaId}
+                  onChange={(e) => setContaId(e.target.value)}
+                  className="w-full p-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                >
+                  <option value="">
+                    {ehCredito ? "Nenhum cartão" : "Nenhuma conta"}
+                  </option>
+                  {contasDisponiveis.map((conta) => (
+                    <option key={conta.id} value={conta.id}>
+                      {conta.nome}
+                      {conta.ultimosDigitos ? ` •••• ${conta.ultimosDigitos}` : ""}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <p className="text-[11px] text-slate-400 bg-slate-50 rounded-xl p-2.5">
+                  {ehCredito
+                    ? "Nenhum cartão cadastrado. Cadastre em Contas e Cartões para acompanhar as faturas."
+                    : "Nenhuma conta compatível cadastrada. Cadastre em Contas e Cartões."}
+                </p>
+              )}
             </div>
 
             {/* Observação */}

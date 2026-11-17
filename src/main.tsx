@@ -1,15 +1,13 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
-import App from "./App.tsx";
-import { FinanceProvider } from "./context/FinanceContext.tsx";
+import Raiz from "./Raiz.tsx";
+import { AuthProvider } from "./context/AuthContext.tsx";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <FinanceProvider>
-      <App />
-    </FinanceProvider>
+    <AuthProvider>
+      <Raiz />
+    </AuthProvider>
   </StrictMode>,
 );
-
-export default App;

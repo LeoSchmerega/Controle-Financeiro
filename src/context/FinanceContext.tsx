@@ -1,9 +1,18 @@
-import { createContext, useContext, useState, useEffect, useMemo } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
 import type {
   Categoria,
+  Conta,
   Lancamento,
   Meta,
   NovaCategoriaInput,
+  NovaContaInput,
   NovaMetaInput,
   SerieFixa,
   TotaisFinanceiros,
@@ -19,13 +28,12 @@ import {
   competenciaEDiaParaData,
   paraObjetoData,
 } from "../utils/dataUtils";
-
-// Chaves de persistência no localStorage — mesmo prefixo já usado pelo tema
-// de cor (ver utils/temasCores.ts), pra manter tudo do Fy Control agrupado.
-const CHAVE_CATEGORIAS_STORAGE = "fycontrol:categorias";
-const CHAVE_LANCAMENTOS_STORAGE = "fycontrol:lancamentos";
-const CHAVE_METAS_STORAGE = "fycontrol:metas";
-const CHAVE_SERIES_FIXAS_STORAGE = "fycontrol:seriesFixas";
+import type {
+  Colecao,
+  DadosFinanceiros,
+  RepositorioFinanceiro,
+} from "../services/repositorio";
+import { criarRepositorioSupabase } from "../services/repositorioSupabase";
 
 // Quantos meses à frente do mês atual as despesas fixas recorrentes são
 // materializadas automaticamente. Ao navegar além dessa janela, a tela de
@@ -38,28 +46,6 @@ export interface OpcoesNovoLancamento {
   parcelas?: number;
 }
 
-// Lê um valor salvo no localStorage. Se não existir (primeira visita da
-// pessoa nesse navegador) ou o JSON estiver corrompido, cai no valor
-// padrão em vez de quebrar a aplicação.
-function lerDoStorage<T>(chave: string, valorPadrao: T): T {
-  try {
-    const bruto = window.localStorage.getItem(chave);
-    return bruto ? (JSON.parse(bruto) as T) : valorPadrao;
-  } catch {
-    return valorPadrao;
-  }
-}
-
-// Grava no localStorage silenciosamente — se falhar (modo privado, quota
-// excedida, etc.) o app continua funcionando só sem persistir a sessão.
-function salvarNoStorage<T>(chave: string, valor: T) {
-  try {
-    window.localStorage.setItem(chave, JSON.stringify(valor));
-  } catch {
-    // Sem persistência disponível — segue o app funcionando normalmente.
-  }
-}
-
 // Resultado de uma tentativa de exclusão de categoria — a UI decide o que
 // mostrar (bloqueado, pedir reatribuição, ou sucesso) a partir disso.
 export interface ResultadoRemocaoCategoria {
@@ -69,7 +55,23 @@ export interface ResultadoRemocaoCategoria {
 
 // 1. Interface que define tudo o que nosso Contexto vai expor para o app
 interface FinanceContextData {
+  // true enquanto os dados ainda estão sendo carregados do repositório
+  carregando: boolean;
+  // Falha ao carregar (ex: tabelas não criadas) — o app mostra o motivo
+  erroCarregamento: string | null;
+  // Falha ao salvar alguma alteração (ex: sem internet)
+  erroSincronizacao: string | null;
   categorias: Categoria[];
+  contas: Conta[];
+  adicionarConta: (novaConta: NovaContaInput) => Conta;
+  editarConta: (id: string, dadosAtualizados: Partial<Omit<Conta, "id">>) => void;
+  alternarAtivaConta: (id: string) => void;
+  // Remove a conta; lançamentos e despesas fixas vinculados ficam sem conta
+  removerConta: (id: string) => void;
+  contarLancamentosPorConta: (contaId: string) => number;
+  // Junta dados vindos de outro lugar (ex: localStorage) aos atuais, sem
+  // duplicar ids que já existem. Retorna quantos itens foram adicionados.
+  importarDados: (dados: DadosFinanceiros) => number;
   lancamentos: Lancamento[];
   metas: Meta[];
   adicionarMeta: (novaMeta: NovaMetaInput) => Meta;
@@ -114,8 +116,8 @@ const FinanceContext = createContext<FinanceContextData>(
   {} as FinanceContextData,
 );
 
-// Categorias padrão do sistema — usadas apenas na primeira visita da
-// pessoa neste navegador (nada salvo ainda no localStorage). Inclui as
+// Categorias padrão do sistema — usadas apenas no primeiro acesso (nenhuma
+// categoria salva ainda no repositório). Inclui as
 // duas categorias "Outros", usadas como destino padrão ao excluir uma
 // categoria com vínculos. Não são dado pessoal, só rótulos/ícones prontos
 // pra facilitar o primeiro uso.
@@ -188,24 +190,144 @@ const CATEGORIAS_PADRAO: Categoria[] = [
 ];
 
 // 3. Provedor (Provider) que vai envelopar a nossa aplicação
-export const FinanceProvider = ({ children }: { children: ReactNode }) => {
-  // Categorias: carrega do localStorage se a pessoa já usou o app neste
-  // navegador; senão começa com o catálogo padrão acima.
-  const [categorias, setCategorias] = useState<Categoria[]>(() =>
-    lerDoStorage(CHAVE_CATEGORIAS_STORAGE, CATEGORIAS_PADRAO),
+export const FinanceProvider = ({
+  children,
+  userId,
+}: {
+  children: ReactNode;
+  userId: string;
+}) => {
+  // Onde os dados são guardados: as tabelas do Supabase do usuário logado.
+  // (O FinanceProvider é recriado ao trocar de conta — ver Raiz.tsx.)
+  const [repositorio] = useState<RepositorioFinanceiro>(() =>
+    criarRepositorioSupabase(userId),
   );
 
-  // Lançamentos: sem mock — pessoa nova sempre começa zerada. O que ela
-  // cadastrar é persistido e volta a aparecer em visitas futuras.
-  const [lancamentos, setLancamentos] = useState<Lancamento[]>(() =>
-    lerDoStorage<Lancamento[]>(CHAVE_LANCAMENTOS_STORAGE, []),
-  );
-
+  // Todos os estados começam vazios e são preenchidos pelo repositório
+  // assim que o carregamento termina (ver useEffect de carga abaixo).
+  const [carregando, setCarregando] = useState(true);
+  const [erroCarregamento, setErroCarregamento] = useState<string | null>(null);
+  const [erroSincronizacao, setErroSincronizacao] = useState<string | null>(null);
+  const [contas, setContas] = useState<Conta[]>([]);
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [lancamentos, setLancamentos] = useState<Lancamento[]>([]);
   // Séries de despesas fixas recorrentes — o "molde" (valor, categoria,
   // dia do mês...) a partir do qual os lançamentos mensais são gerados.
-  const [seriesFixas, setSeriesFixas] = useState<SerieFixa[]>(() =>
-    lerDoStorage<SerieFixa[]>(CHAVE_SERIES_FIXAS_STORAGE, []),
-  );
+  const [seriesFixas, setSeriesFixas] = useState<SerieFixa[]>([]);
+  const [metas, setMetas] = useState<Meta[]>([]);
+
+  // Última versão de cada coleção que já foi enviada ao repositório. Serve
+  // para o repositório saber o que mudou (anterior x atual) a cada alteração.
+  const persistidoRef = useRef<DadosFinanceiros | null>(null);
+  // Fila de gravações: garante que elas aconteçam na ordem em que foram
+  // feitas, mesmo quando o repositório é assíncrono (rede).
+  const filaGravacaoRef = useRef<Promise<void>>(Promise.resolve());
+
+  // Carga inicial. Se ainda não há categorias salvas (primeiro acesso),
+  // semeia as padrão — elas serão gravadas pela sincronização logo depois.
+  useEffect(() => {
+    let cancelado = false;
+    repositorio
+      .carregar()
+      .then((dados) => {
+        if (cancelado) return;
+        persistidoRef.current = { ...dados };
+        setCategorias(
+          dados.categorias.length > 0 ? dados.categorias : CATEGORIAS_PADRAO,
+        );
+        setLancamentos(dados.lancamentos);
+        setSeriesFixas(dados.seriesFixas);
+        setMetas(dados.metas);
+        setContas(dados.contas);
+        setCarregando(false);
+      })
+      .catch((erro: Error) => {
+        console.error("Erro ao carregar dados financeiros:", erro);
+        // persistidoRef continua null: nada é gravado enquanto a carga não
+        // der certo, para não sobrescrever o banco com listas vazias.
+        if (!cancelado) {
+          setErroCarregamento(erro.message);
+          setCarregando(false);
+        }
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [repositorio]);
+
+  // Sempre que uma coleção muda (depois da carga), envia anterior + atual
+  // ao repositório pela fila de gravação.
+  const sincronizarColecao = <K extends Colecao>(
+    colecao: K,
+    atual: DadosFinanceiros[K],
+  ) => {
+    const persistido = persistidoRef.current;
+    if (carregando || !persistido) return;
+    const anterior = persistido[colecao];
+    if (anterior === atual) return;
+    persistido[colecao] = atual;
+    filaGravacaoRef.current = filaGravacaoRef.current
+      .then(() => repositorio.sincronizar(colecao, anterior, atual))
+      .catch((erro: Error) => {
+        console.error(`Erro ao salvar ${colecao}:`, erro);
+        setErroSincronizacao(erro.message);
+      });
+  };
+
+  // ------------------------------------------------------------ Contas
+  const adicionarConta = (novaConta: NovaContaInput): Conta => {
+    const criada: Conta = {
+      ...novaConta,
+      id: `conta_${Date.now()}`,
+      ativa: novaConta.ativa ?? true,
+      ordem: contas.length > 0 ? Math.max(...contas.map((c) => c.ordem)) + 1 : 1,
+    };
+    setContas((prev) => [...prev, criada]);
+    return criada;
+  };
+
+  const editarConta = (id: string, dadosAtualizados: Partial<Omit<Conta, "id">>) => {
+    setContas((prev) =>
+      prev.map((conta) => (conta.id === id ? { ...conta, ...dadosAtualizados } : conta)),
+    );
+  };
+
+  const alternarAtivaConta = (id: string) => {
+    setContas((prev) =>
+      prev.map((conta) => (conta.id === id ? { ...conta, ativa: !conta.ativa } : conta)),
+    );
+  };
+
+  const contarLancamentosPorConta = (contaId: string) =>
+    lancamentos.filter((l) => l.contaId === contaId).length;
+
+  const removerConta = (id: string) => {
+    // Desvincula (não apaga) os lançamentos e despesas fixas dessa conta
+    setLancamentos((prev) =>
+      prev.map((l) => (l.contaId === id ? { ...l, contaId: undefined } : l)),
+    );
+    setSeriesFixas((prev) =>
+      prev.map((s) => (s.contaId === id ? { ...s, contaId: undefined } : s)),
+    );
+    setContas((prev) => prev.filter((conta) => conta.id !== id));
+  };
+
+  // ---------------------------------------------------------- Importação
+  const importarDados = (dados: DadosFinanceiros): number => {
+    let adicionados = 0;
+    const juntar = <T extends { id: string }>(atuais: T[], novos: T[]): T[] => {
+      const ids = new Set(atuais.map((item) => item.id));
+      const faltando = novos.filter((item) => !ids.has(item.id));
+      adicionados += faltando.length;
+      return faltando.length > 0 ? [...atuais, ...faltando] : atuais;
+    };
+    setContas(juntar(contas, dados.contas));
+    setCategorias(juntar(categorias, dados.categorias));
+    setLancamentos(juntar(lancamentos, dados.lancamentos));
+    setSeriesFixas(juntar(seriesFixas, dados.seriesFixas));
+    setMetas(juntar(metas, dados.metas));
+    return adicionados;
+  };
 
   // Função para cadastrar uma nova Categoria — preenche com valores padrão
   // tudo que não for informado (cor, ícone, ordem, status).
@@ -350,6 +472,7 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
         mesInicio,
         mesFim: null,
         mesesExcluidos: [],
+        contaId: novoLanc.contaId,
       };
       setSeriesFixas((prev) => [...prev, serie]);
       return;
@@ -426,6 +549,7 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
                 categoriaId: dadosAtualizados.categoriaId,
                 formaPagamento: dadosAtualizados.formaPagamento,
                 observacao: dadosAtualizados.observacao,
+                contaId: dadosAtualizados.contaId,
               }
             : serie,
         ),
@@ -496,29 +620,28 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
     );
   };
 
-  // Metas financeiras — sem mock, carrega do localStorage se existir;
-  // senão começa vazio e o usuário cadastra as próprias pela Dashboard.
-  const [metas, setMetas] = useState<Meta[]>(() =>
-    lerDoStorage<Meta[]>(CHAVE_METAS_STORAGE, []),
-  );
-
-  // Persiste cada estado no localStorage sempre que ele muda, para que a
-  // pessoa encontre os próprios dados salvos ao voltar (mesmo navegador).
+  // Persiste cada coleção no repositório sempre que ela muda.
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
-    salvarNoStorage(CHAVE_CATEGORIAS_STORAGE, categorias);
-  }, [categorias]);
+    sincronizarColecao("categorias", categorias);
+  }, [categorias, carregando]);
 
   useEffect(() => {
-    salvarNoStorage(CHAVE_LANCAMENTOS_STORAGE, lancamentos);
-  }, [lancamentos]);
+    sincronizarColecao("lancamentos", lancamentos);
+  }, [lancamentos, carregando]);
 
   useEffect(() => {
-    salvarNoStorage(CHAVE_METAS_STORAGE, metas);
-  }, [metas]);
+    sincronizarColecao("metas", metas);
+  }, [metas, carregando]);
 
   useEffect(() => {
-    salvarNoStorage(CHAVE_SERIES_FIXAS_STORAGE, seriesFixas);
-  }, [seriesFixas]);
+    sincronizarColecao("seriesFixas", seriesFixas);
+  }, [seriesFixas, carregando]);
+
+  useEffect(() => {
+    sincronizarColecao("contas", contas);
+  }, [contas, carregando]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   // Materializa o lançamento de uma competência específica a partir do
   // molde da série fixa — id determinístico (serie + competência) evita
@@ -537,6 +660,7 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
     formaPagamento: serie.formaPagamento,
     observacao: serie.observacao,
     recorrenciaFixaId: serie.id,
+    contaId: serie.contaId,
   });
 
   // Garante que toda série fixa ativa tenha uma ocorrência lançada em cada
@@ -639,7 +763,17 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
   return (
     <FinanceContext.Provider
       value={{
+        carregando,
+        erroCarregamento,
+        erroSincronizacao,
         categorias,
+        contas,
+        adicionarConta,
+        editarConta,
+        alternarAtivaConta,
+        removerConta,
+        contarLancamentosPorConta,
+        importarDados,
         lancamentos,
         metas,
         adicionarMeta,

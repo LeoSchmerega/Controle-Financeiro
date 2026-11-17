@@ -40,9 +40,7 @@ export default function CategoriasPage() {
     () => gerarOpcoesMesAno(lancamentos.map((l) => l.data)),
     [lancamentos],
   );
-  const [mesSelecionado, setMesSelecionado] = useState<string>(
-    opcoesMeses[0]?.valor ?? mesAnoAtual(),
-  );
+  const [mesSelecionado, setMesSelecionado] = useState<string>(mesAnoAtual);
 
   // Garante que o mês atualmente selecionado apareça no <select>, mesmo que
   // ele não tenha nenhuma categoria com movimentação (navegado via setas ‹ ›)

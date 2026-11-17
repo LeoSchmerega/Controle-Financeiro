@@ -11,4 +11,9 @@ export interface Categoria {
   isPadrao?: boolean;
 }
 
-export type PaginaAtiva = "Dashboard" | "Lançamentos" | "Categorias";
+export type PaginaAtiva =
+  | "Dashboard"
+  | "Lançamentos"
+  | "Categorias"
+  | "Contas"
+  | "Configurações";

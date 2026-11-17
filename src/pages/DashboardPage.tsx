@@ -33,9 +33,7 @@ export default function DashboardPage({
     () => gerarOpcoesMesAno(lancamentos.map((l) => l.data)),
     [lancamentos],
   );
-  const [mesSelecionado, setMesSelecionado] = useState<string>(
-    opcoesMeses[0]?.valor ?? mesAnoAtual(),
-  );
+  const [mesSelecionado, setMesSelecionado] = useState<string>(mesAnoAtual);
 
   const opcoesMesesParaExibir = useMemo(() => {
     if (opcoesMeses.some((o) => o.valor === mesSelecionado)) {

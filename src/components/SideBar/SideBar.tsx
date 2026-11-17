@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ChevronDown, X } from "lucide-react";
+import { ChevronDown, CreditCard, LogOut, Settings, X } from "lucide-react";
 // 1. Importação dos tipos universais do projeto
 import type { PaginaAtiva } from "../../types";
 import type { TemaCor } from "../../utils/temasCores";
@@ -14,7 +14,10 @@ import IconCategoria from "../../assets/icones/ic-categoria.svg?react";
 interface NavItem {
   id: PaginaAtiva;
   label: string;
-  Icon: React.FC<React.SVGProps<SVGSVGElement>>;
+  Icon: React.ComponentType<{ className?: string }>;
+  // Ícones do lucide-react são de traço (stroke) e mudam de cor pelo
+  // "color"; os SVGs próprios do projeto são preenchidos (fill).
+  lucide?: boolean;
 }
 
 // 4. Configuração das rotas do menu
@@ -22,6 +25,8 @@ const NAV_ITEMS: NavItem[] = [
   { id: "Dashboard", label: "Dashboard", Icon: IconDashboard },
   { id: "Categorias", label: "Categorias", Icon: IconCategoria },
   { id: "Lançamentos", label: "Lançamentos", Icon: IconLancamentos },
+  { id: "Contas", label: "Contas e Cartões", Icon: CreditCard, lucide: true },
+  { id: "Configurações", label: "Configurações", Icon: Settings, lucide: true },
 ];
 
 // 5. Interface de Props (Contrato estrito com App.tsx)
@@ -35,6 +40,9 @@ interface SidebarProps {
   // fica sempre visível e esses dois props não têm efeito visual.
   isOpen: boolean;
   onClose: () => void;
+  // Conta logada — mostrada no rodapé junto do botão de sair
+  emailUsuario?: string;
+  onSair: () => void;
 }
 
 export default function Sidebar({
@@ -45,6 +53,8 @@ export default function Sidebar({
   onTrocarTemaCor,
   isOpen,
   onClose,
+  emailUsuario,
+  onSair,
 }: SidebarProps) {
   const [seletorCoresAberto, setSeletorCoresAberto] = useState(false);
 
@@ -91,7 +101,7 @@ export default function Sidebar({
         {/* Navegação Semântica com Efeitos de Hover Modernos */}
         <nav aria-label="Menu Principal">
           <ul className="flex flex-col gap-2">
-            {NAV_ITEMS.map(({ id, label, Icon }) => {
+            {NAV_ITEMS.map(({ id, label, Icon, lucide }) => {
               const isActive = paginaAtiva === id;
 
               return (
@@ -107,9 +117,15 @@ export default function Sidebar({
                     }`}
                   >
                     <Icon
-                      className={`w-6 h-6 shrink-0 [&_path]:transition-colors ${
-                        isActive ? "[&_path]:fill-white" : "[&_path]:fill-black"
-                      }`}
+                      className={
+                        lucide
+                          ? `w-6 h-6 shrink-0 transition-colors ${
+                              isActive ? "text-white" : "text-black"
+                            }`
+                          : `w-6 h-6 shrink-0 [&_path]:transition-colors ${
+                              isActive ? "[&_path]:fill-white" : "[&_path]:fill-black"
+                            }`
+                      }
                     />
                     <span className="truncate">{label}</span>
                   </button>
@@ -173,6 +189,25 @@ export default function Sidebar({
             })}
           </div>
         )}
+
+        {/* Conta logada + sair */}
+        <div className="flex items-center gap-2 mt-3 px-2">
+          <span
+            className="flex-1 truncate text-xs text-slate-500"
+            title={emailUsuario}
+          >
+            {emailUsuario}
+          </span>
+          <button
+            type="button"
+            onClick={onSair}
+            aria-label="Sair da conta"
+            title="Sair"
+            className="flex items-center justify-center min-w-9 min-h-9 rounded-lg text-slate-500 hover:text-brand hover:bg-white/60 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+          >
+            <LogOut className="w-4 h-4 shrink-0" />
+          </button>
+        </div>
       </footer>
     </aside>
   );

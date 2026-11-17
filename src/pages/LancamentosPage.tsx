@@ -67,9 +67,7 @@ export default function LancamentosPage() {
     () => gerarOpcoesMesAno(lancamentos.map((l) => l.data)),
     [lancamentos],
   );
-  const [mesSelecionado, setMesSelecionado] = useState<string>(
-    opcoesMeses[0]?.valor ?? mesAnoAtual(),
-  );
+  const [mesSelecionado, setMesSelecionado] = useState<string>(mesAnoAtual);
 
   // Ao navegar para um mês além da janela padrão de geração (12 meses à
   // frente do mês atual), estende a materialização das despesas fixas até
