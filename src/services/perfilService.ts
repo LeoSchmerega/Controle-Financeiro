@@ -1,7 +1,7 @@
 // src/services/perfilService.ts
 // Leitura/gravação do perfil (tabela public.perfis) e alteração de email e
 // senha (Supabase Auth). A tela de Configurações só fala com este arquivo.
-import { supabase } from "../lib/supabase";
+import { supabase, URL_DO_APP } from "../lib/supabase";
 import { cpfValido, somenteDigitos, telefoneValido } from "../utils/documentoUtils";
 
 export interface Perfil {
@@ -82,7 +82,7 @@ export async function salvarPerfil(userId: string, perfil: Perfil): Promise<void
 export async function alterarEmail(novoEmail: string): Promise<void> {
   const { error } = await supabase.auth.updateUser(
     { email: novoEmail },
-    { emailRedirectTo: window.location.origin },
+    { emailRedirectTo: URL_DO_APP },
   );
   if (error) {
     const m = error.message.toLowerCase();

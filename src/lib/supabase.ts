@@ -16,6 +16,10 @@ export const supabaseConfigurado = Boolean(
   url && chavePublica && !url.includes("SEU-PROJETO"),
 );
 
+// Endereço do app para onde os links de email devem voltar. Inclui o
+// "base" do Vite (/Controle-Financeiro/ no GitHub Pages, / no localhost).
+export const URL_DO_APP = `${window.location.origin}${import.meta.env.BASE_URL}`;
+
 export const supabase = createClient(
   supabaseConfigurado ? url! : "https://placeholder.supabase.co",
   supabaseConfigurado ? chavePublica! : "placeholder",

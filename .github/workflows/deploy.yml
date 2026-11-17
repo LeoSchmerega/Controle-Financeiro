@@ -30,8 +30,14 @@ jobs:
       - name: Instalar dependências
         run: npm ci
 
+      # As chaves do Supabase vêm das "Variables" do repositório
+      # (Settings → Secrets and variables → Actions → Variables), já que o
+      # .env.local não vai para o GitHub. A chave é a pública (publishable).
       - name: Build
         run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
 
       - name: Configurar Pages
         uses: actions/configure-pages@v5

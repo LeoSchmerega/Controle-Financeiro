@@ -4,7 +4,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
-import { supabase } from "../lib/supabase";
+import { supabase, URL_DO_APP } from "../lib/supabase";
 import type { Perfil } from "../services/perfilService";
 
 // Resultado das ações de login/cadastro — a tela decide a mensagem.
@@ -83,7 +83,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       email,
       password: senha,
       options: {
-        emailRedirectTo: window.location.origin,
+        emailRedirectTo: URL_DO_APP,
         data: {
           nome: perfil.nome.trim(),
           sobrenome: perfil.sobrenome.trim(),
