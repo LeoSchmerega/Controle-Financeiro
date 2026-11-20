@@ -473,6 +473,7 @@ export const FinanceProvider = ({
         mesFim: null,
         mesesExcluidos: [],
         contaId: novoLanc.contaId,
+        carteira: novoLanc.carteira,
       };
       setSeriesFixas((prev) => [...prev, serie]);
       return;
@@ -550,6 +551,7 @@ export const FinanceProvider = ({
                 formaPagamento: dadosAtualizados.formaPagamento,
                 observacao: dadosAtualizados.observacao,
                 contaId: dadosAtualizados.contaId,
+                carteira: dadosAtualizados.carteira,
               }
             : serie,
         ),
@@ -661,6 +663,7 @@ export const FinanceProvider = ({
     observacao: serie.observacao,
     recorrenciaFixaId: serie.id,
     contaId: serie.contaId,
+    carteira: serie.carteira,
   });
 
   // Garante que toda série fixa ativa tenha uma ocorrência lançada em cada

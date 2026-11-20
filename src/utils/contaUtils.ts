@@ -1,7 +1,12 @@
 // src/utils/contaUtils.ts
 // Regras de contas e cartões: rótulos, quais contas combinam com cada
 // forma de pagamento, e o cálculo das faturas de cartão de crédito.
-import type { Conta, Lancamento, TipoConta } from "../types/financeiro";
+import type {
+  CarteiraBeneficio,
+  Conta,
+  Lancamento,
+  TipoConta,
+} from "../types/financeiro";
 import { deslocarMesAno, mesAnoDeData, paraObjetoData } from "./dataUtils";
 
 export const ROTULOS_TIPO_CONTA: Record<TipoConta, string> = {
@@ -9,7 +14,59 @@ export const ROTULOS_TIPO_CONTA: Record<TipoConta, string> = {
   conta_corrente: "Conta corrente",
   carteira_digital: "Carteira digital",
   dinheiro: "Dinheiro",
+  beneficio: "Cartão benefício",
 };
+
+export const CARTEIRAS_BENEFICIO: CarteiraBeneficio[] = [
+  "alimentacao",
+  "refeicao",
+  "transporte",
+  "livre",
+];
+
+export const ROTULOS_CARTEIRA: Record<CarteiraBeneficio, string> = {
+  alimentacao: "Alimentação",
+  refeicao: "Refeição",
+  transporte: "Transporte",
+  livre: "Livre",
+};
+
+type FormaPagamento = Lancamento["formaPagamento"];
+
+// Forma de pagamento que combina com a conta escolhida. Para conta corrente
+// e carteira digital mantém a forma atual se ela fizer sentido (Pix, Débito
+// ou Boleto); senão usa Pix.
+export function formaParaConta(tipo: TipoConta, formaAtual: FormaPagamento): FormaPagamento {
+  switch (tipo) {
+    case "cartao_credito":
+      return "Crédito";
+    case "dinheiro":
+      return "Dinheiro";
+    case "beneficio":
+      return "Benefício";
+    default:
+      return ["Pix", "Débito", "Boleto"].includes(formaAtual) ? formaAtual : "Pix";
+  }
+}
+
+// Saldo atual de cada carteira de um cartão benefício: tudo que entrou
+// (receitas) menos tudo que saiu (despesas) naquela carteira.
+export function saldosDoBeneficio(
+  conta: Conta,
+  lancamentos: Lancamento[],
+): Record<CarteiraBeneficio, number> {
+  const saldos: Record<CarteiraBeneficio, number> = {
+    alimentacao: 0,
+    refeicao: 0,
+    transporte: 0,
+    livre: 0,
+  };
+  lancamentos.forEach((l) => {
+    if (l.contaId !== conta.id || !l.carteira) return;
+    saldos[l.carteira] += l.tipo === "receita" ? l.valor : -l.valor;
+  });
+  return saldos;
+}
 
 // Quais tipos de conta fazem sentido para cada forma de pagamento — usado
 // para filtrar o seletor de conta no lançamento.
@@ -21,6 +78,8 @@ export function tiposDeContaParaForma(
       return ["cartao_credito"];
     case "Dinheiro":
       return ["dinheiro"];
+    case "Benefício":
+      return ["beneficio"];
     default: // Pix, Débito, Boleto
       return ["conta_corrente", "carteira_digital"];
   }

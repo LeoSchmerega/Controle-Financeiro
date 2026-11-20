@@ -26,7 +26,7 @@ export interface Lancamento {
   tipo: TipoTransacao;
   tipoGasto?: TipoGasto; // Fixo ou Variável
   categoriaId: string;
-  formaPagamento: "Pix" | "Débito" | "Crédito" | "Dinheiro" | "Boleto";
+  formaPagamento: "Pix" | "Débito" | "Crédito" | "Dinheiro" | "Boleto" | "Benefício";
   observacao?: string;
   // Presente quando o lançamento é uma parcela de uma compra parcelada —
   // liga todas as parcelas da mesma compra pelo mesmo grupoId.
@@ -40,6 +40,8 @@ export interface Lancamento {
   recorrenciaFixaId?: string;
   // Conta/cartão de onde o dinheiro saiu (ou onde entrou, se receita)
   contaId?: string;
+  // Só para cartão benefício: de qual saldo saiu (ou em qual entrou)
+  carteira?: CarteiraBeneficio;
 }
 
 // "Molde" de uma despesa fixa recorrente (ex: Aluguel, Internet). A partir
@@ -57,6 +59,7 @@ export interface SerieFixa {
   mesFim: string | null; // competência "yyyy-mm" da última ocorrência; null = sem fim (continua indefinidamente)
   mesesExcluidos: string[]; // competências "yyyy-mm" removidas manualmente (a recorrência continua nos demais meses)
   contaId?: string; // conta/cartão em que a despesa fixa é paga
+  carteira?: CarteiraBeneficio; // saldo usado, se a conta for cartão benefício
 }
 
 // Totais agregados de um conjunto de lançamentos — usados nos Cards de
@@ -89,7 +92,11 @@ export type TipoConta =
   | "cartao_credito"
   | "conta_corrente"
   | "carteira_digital"
-  | "dinheiro";
+  | "dinheiro"
+  | "beneficio"; // vale alimentação/refeição/transporte (ex: Caju, Flash, VR)
+
+// Saldos separados de um cartão benefício. Um mesmo cartão pode ter vários.
+export type CarteiraBeneficio = "alimentacao" | "refeicao" | "transporte" | "livre";
 
 export interface Conta {
   id: string;
@@ -103,6 +110,8 @@ export interface Conta {
   diaFechamento?: number; // dia em que a fatura fecha (1–31)
   diaVencimento?: number; // dia em que a fatura vence (1–31)
   limite?: number;
+  // Só para cartão benefício: quais saldos ele tem
+  carteiras?: CarteiraBeneficio[];
 }
 
 export type NovaContaInput = Omit<Conta, "id" | "ordem" | "ativa"> &

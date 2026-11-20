@@ -8,11 +8,16 @@ import { CreditCard, ShieldCheck, X } from "lucide-react";
 import { useFinance } from "../../context/FinanceContext";
 import { PALETA_CORES } from "../../utils/paletaVisual";
 import { formatarValorMonetario } from "../../utils/valorUtils";
-import { ROTULOS_TIPO_CONTA } from "../../utils/contaUtils";
-import type { Conta, TipoConta } from "../../types/financeiro";
+import {
+  CARTEIRAS_BENEFICIO,
+  ROTULOS_CARTEIRA,
+  ROTULOS_TIPO_CONTA,
+} from "../../utils/contaUtils";
+import type { CarteiraBeneficio, Conta, TipoConta } from "../../types/financeiro";
 
 const TIPOS: TipoConta[] = [
   "cartao_credito",
+  "beneficio",
   "conta_corrente",
   "carteira_digital",
   "dinheiro",
@@ -46,6 +51,8 @@ export default function ModalConta({
   const [diaVencimento, setDiaVencimento] = useState(10);
   const [limite, setLimite] = useState("");
   const [ativa, setAtiva] = useState(true);
+  const [carteiras, setCarteiras] =
+    useState<CarteiraBeneficio[]>(CARTEIRAS_BENEFICIO);
 
   // Preenche (ou limpa) o formulário ao abrir
   useEffect(() => {
@@ -63,6 +70,7 @@ export default function ModalConta({
           : "",
       );
       setAtiva(contaEditando.ativa);
+      setCarteiras(contaEditando.carteiras ?? CARTEIRAS_BENEFICIO);
     } else {
       setNome("");
       setTipo("cartao_credito");
@@ -72,6 +80,7 @@ export default function ModalConta({
       setDiaVencimento(10);
       setLimite("");
       setAtiva(true);
+      setCarteiras(CARTEIRAS_BENEFICIO);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, contaEditando]);
@@ -88,10 +97,19 @@ export default function ModalConta({
   if (!isOpen) return null;
 
   const ehCartao = tipo === "cartao_credito";
+  const ehBeneficio = tipo === "beneficio";
+
+  const alternarCarteira = (c: CarteiraBeneficio) =>
+    setCarteiras((atuais) =>
+      atuais.includes(c)
+        ? atuais.filter((x) => x !== c)
+        : CARTEIRAS_BENEFICIO.filter((x) => x === c || atuais.includes(x)),
+    );
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!nome.trim()) return;
+    if (ehBeneficio && carteiras.length === 0) return;
 
     const dados = {
       nome: nome.trim(),
@@ -105,6 +123,7 @@ export default function ModalConta({
       diaVencimento: ehCartao ? diaVencimento : undefined,
       limite:
         ehCartao && limite ? parseFloat(limite.replace(",", ".")) : undefined,
+      carteiras: ehBeneficio ? carteiras : undefined,
     };
 
     if (emEdicao && contaEditando) {
@@ -172,7 +191,13 @@ export default function ModalConta({
               <input
                 id="conta-nome"
                 type="text"
-                placeholder={ehCartao ? "Ex: Nubank, Inter Black..." : "Ex: Itaú, Carteira..."}
+                placeholder={
+                  ehCartao
+                    ? "Ex: Nubank, Inter Black..."
+                    : ehBeneficio
+                      ? "Ex: Caju, Flash, VR..."
+                      : "Ex: Itaú, Carteira..."
+                }
                 value={nome}
                 maxLength={40}
                 onChange={(e) => setNome(e.target.value)}
@@ -268,6 +293,41 @@ export default function ModalConta({
                   </span>
                 </div>
               </>
+            )}
+
+            {ehBeneficio && (
+              <div>
+                <span className={classeRotulo}>Saldos do cartão</span>
+                <div className="grid grid-cols-2 gap-2">
+                  {CARTEIRAS_BENEFICIO.map((c) => (
+                    <label
+                      key={c}
+                      className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold cursor-pointer select-none transition-colors ${
+                        carteiras.includes(c)
+                          ? "border-brand/40 bg-red-50 text-brand"
+                          : "border-slate-200 text-slate-500 hover:bg-slate-50"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={carteiras.includes(c)}
+                        onChange={() => alternarCarteira(c)}
+                        className="w-4 h-4 accent-brand cursor-pointer"
+                      />
+                      {ROTULOS_CARTEIRA[c]}
+                    </label>
+                  ))}
+                </div>
+                <span
+                  className={`text-[10px] mt-1 block ${
+                    carteiras.length === 0 ? "text-red-600" : "text-slate-400"
+                  }`}
+                >
+                  {carteiras.length === 0
+                    ? "Marque pelo menos um saldo."
+                    : "Cada saldo é controlado separadamente: o que entra em Refeição só sai de Refeição."}
+                </span>
+              </div>
             )}
 
             {/* Cor */}

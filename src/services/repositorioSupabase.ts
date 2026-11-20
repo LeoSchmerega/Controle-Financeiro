@@ -47,6 +47,7 @@ const mapContas: Mapeador<Conta> = {
     dia_fechamento: c.diaFechamento ?? null,
     dia_vencimento: c.diaVencimento ?? null,
     limite: c.limite ?? null,
+    carteiras: c.carteiras ?? null,
   }),
   deLinha: (l) => ({
     id: l.id as string,
@@ -59,6 +60,7 @@ const mapContas: Mapeador<Conta> = {
     diaFechamento: numeroOpcional(l.dia_fechamento),
     diaVencimento: numeroOpcional(l.dia_vencimento),
     limite: numeroOpcional(l.limite),
+    carteiras: opcional(l.carteiras),
   }),
 };
 
@@ -105,6 +107,7 @@ const mapLancamentos: Mapeador<Lancamento> = {
     parcela_numero: x.parcela?.numero ?? null,
     parcela_total: x.parcela?.total ?? null,
     recorrencia_fixa_id: x.recorrenciaFixaId ?? null,
+    carteira: x.carteira ?? null,
   }),
   deLinha: (l) => ({
     id: l.id as string,
@@ -125,6 +128,7 @@ const mapLancamentos: Mapeador<Lancamento> = {
         }
       : undefined,
     recorrenciaFixaId: opcional(l.recorrencia_fixa_id),
+    carteira: opcional(l.carteira),
   }),
 };
 
@@ -142,6 +146,7 @@ const mapSeriesFixas: Mapeador<SerieFixa> = {
     mes_inicio: s.mesInicio,
     mes_fim: s.mesFim,
     meses_excluidos: s.mesesExcluidos,
+    carteira: s.carteira ?? null,
   }),
   deLinha: (l) => ({
     id: l.id as string,
@@ -155,6 +160,7 @@ const mapSeriesFixas: Mapeador<SerieFixa> = {
     mesInicio: l.mes_inicio as string,
     mesFim: (l.mes_fim as string | null) ?? null,
     mesesExcluidos: (l.meses_excluidos as string[] | null) ?? [],
+    carteira: opcional(l.carteira),
   }),
 };
 

@@ -33,6 +33,7 @@ const FORMAS_PAGAMENTO: Lancamento["formaPagamento"][] = [
   "Crédito",
   "Dinheiro",
   "Boleto",
+  "Benefício",
 ];
 
 export default function LancamentosPage() {

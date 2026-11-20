@@ -10,13 +10,47 @@ import {
 import { useFinance } from "../../context/FinanceContext";
 import { dataParaISO, dataParaBR } from "../../utils/dataUtils";
 import { formatarValorMonetario } from "../../utils/valorUtils";
-import { tiposDeContaParaForma } from "../../utils/contaUtils";
+import {
+  ROTULOS_CARTEIRA,
+  ROTULOS_TIPO_CONTA,
+  formaParaConta,
+  formatarMoeda,
+  saldosDoBeneficio,
+  tiposDeContaParaForma,
+} from "../../utils/contaUtils";
 import ModalCategoriaRapida from "./ModalCategoriaRapida";
 import type {
+  CarteiraBeneficio,
+  Conta,
+  TipoConta,
   TipoTransacao,
   TipoGasto,
   Lancamento,
 } from "../../types/financeiro";
+
+// Ordem dos grupos no seletor de conta
+const ORDEM_TIPOS_CONTA: TipoConta[] = [
+  "cartao_credito",
+  "beneficio",
+  "conta_corrente",
+  "carteira_digital",
+  "dinheiro",
+];
+
+// Data de hoje (yyyy-mm-dd) no fuso do dispositivo. toISOString() usa UTC
+// e, no Brasil, depois das 21h já devolveria o dia seguinte.
+function hojeISO(): string {
+  const h = new Date();
+  return `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, "0")}-${String(h.getDate()).padStart(2, "0")}`;
+}
+
+// Saldo inicial para um cartão benefício: mantém o atual se o cartão o
+// tiver; senão, o primeiro saldo do cartão.
+function carteiraPara(conta: Conta | undefined, atual: CarteiraBeneficio | ""): CarteiraBeneficio | "" {
+  if (conta?.tipo !== "beneficio") return "";
+  const disponiveis = conta.carteiras ?? [];
+  return atual && disponiveis.includes(atual) ? atual : (disponiveis[0] ?? "");
+}
 
 // Opções de parcelamento oferecidas no cadastro de uma despesa variável.
 const OPCOES_PARCELAS = Array.from({ length: 24 }, (_, i) => i + 1);
@@ -26,15 +60,26 @@ interface DrawerLancamentoProps {
   onClose: () => void;
   // Quando presente, o drawer entra em modo de edição desse lançamento
   lancamentoEditando?: Lancamento | null;
+  // Ao criar: já abre com esta conta/cartão e este tipo selecionados
+  // (usado pelos botões da tela Contas e Cartões)
+  contaInicialId?: string;
+  tipoInicial?: TipoTransacao;
 }
 
 export default function DrawerLancamento({
   isOpen,
   onClose,
   lancamentoEditando = null,
+  contaInicialId,
+  tipoInicial,
 }: DrawerLancamentoProps) {
-  const { categorias, contas, adicionarLancamento, editarLancamento } =
-    useFinance();
+  const {
+    categorias,
+    contas,
+    lancamentos,
+    adicionarLancamento,
+    editarLancamento,
+  } = useFinance();
   const emEdicao = lancamentoEditando !== null;
 
   const [isCategoriaModalOpen, setIsCategoriaModalOpen] = useState(false);
@@ -49,6 +94,7 @@ export default function DrawerLancamento({
   const [observacao, setObservacao] = useState("");
   const [parcelas, setParcelas] = useState(1);
   const [contaId, setContaId] = useState("");
+  const [carteira, setCarteira] = useState<CarteiraBeneficio | "">("");
 
   // Preenche (ou limpa) o formulário sempre que o drawer é aberto
   useEffect(() => {
@@ -65,19 +111,25 @@ export default function DrawerLancamento({
       setObservacao(lancamentoEditando.observacao ?? "");
       setParcelas(1);
       setContaId(lancamentoEditando.contaId ?? "");
+      setCarteira(lancamentoEditando.carteira ?? "");
     } else {
-      setTipo("receita");
+      const contaInicial = contas.find((c) => c.id === contaInicialId);
+      setTipo(tipoInicial ?? (contaInicial ? "despesa" : "receita"));
       setTipoGasto("variavel");
       setDescricao("");
       setCategoriaId("");
       setValor("");
-      setData(new Date().toISOString().slice(0, 10));
-      setFormaPagamento("Pix");
+      setData(hojeISO());
+      setFormaPagamento(contaInicial ? formaParaConta(contaInicial.tipo, "Pix") : "Pix");
       setObservacao("");
       setParcelas(1);
-      setContaId("");
+      setContaId(contaInicial?.id ?? "");
+      setCarteira(carteiraPara(contaInicial, ""));
     }
-  }, [isOpen, lancamentoEditando]);
+    // "contas" fica de fora de propósito: mudar uma conta em outra aba não
+    // deve apagar o que a pessoa está digitando.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, lancamentoEditando, contaInicialId, tipoInicial]);
 
   // Parcelamento só faz sentido para uma despesa variável nova — uma
   // despesa fixa já se repete sozinha todo mês, e o número de parcelas de
@@ -87,25 +139,41 @@ export default function DrawerLancamento({
 
   if (!isOpen) return null;
 
-  // Contas que combinam com a forma de pagamento escolhida (ex: Crédito →
-  // só cartões). A conta já vinculada aparece mesmo se estiver inativa.
-  const contasCompativeis = (forma: Lancamento["formaPagamento"]) => {
-    const tipos = tiposDeContaParaForma(forma);
-    return contas
-      .filter((c) => tipos.includes(c.tipo) && (c.ativa || c.id === contaId))
-      .sort((a, b) => a.ordem - b.ordem);
+  // Todas as contas ativas (mais a já vinculada, mesmo inativa), agrupadas
+  // por tipo no seletor. Escolher a conta define a forma de pagamento.
+  const contasSelecionaveis = contas
+    .filter((c) => c.ativa || c.id === contaId)
+    .sort((a, b) => a.ordem - b.ordem);
+  const gruposDeContas = ORDEM_TIPOS_CONTA.map((tipoConta) => ({
+    tipoConta,
+    contas: contasSelecionaveis.filter((c) => c.tipo === tipoConta),
+  })).filter((grupo) => grupo.contas.length > 0);
+  const contaSelecionada = contas.find((c) => c.id === contaId);
+  const saldos =
+    contaSelecionada?.tipo === "beneficio"
+      ? saldosDoBeneficio(contaSelecionada, lancamentos)
+      : null;
+
+  const handleTrocarConta = (novoId: string) => {
+    setContaId(novoId);
+    const conta = contas.find((c) => c.id === novoId);
+    if (conta) setFormaPagamento(formaParaConta(conta.tipo, formaPagamento));
+    setCarteira(carteiraPara(conta, carteira));
   };
-  const contasDisponiveis = contasCompativeis(formaPagamento);
-  const ehCredito = formaPagamento === "Crédito";
 
   // Ao trocar a forma de pagamento, a conta escolhida pode deixar de fazer
-  // sentido (ex: Pix → Crédito). Se só houver uma opção, já seleciona.
+  // sentido (ex: conta corrente → Crédito). Se só houver uma conta
+  // compatível, já seleciona; senão, limpa.
   const handleTrocarFormaPagamento = (forma: Lancamento["formaPagamento"]) => {
     setFormaPagamento(forma);
-    const opcoes = contasCompativeis(forma);
-    if (!opcoes.some((c) => c.id === contaId)) {
-      setContaId(opcoes.length === 1 ? opcoes[0].id : "");
+    if (contaSelecionada && tiposDeContaParaForma(forma).includes(contaSelecionada.tipo)) {
+      return;
     }
+    const tipos = tiposDeContaParaForma(forma);
+    const opcoes = contas.filter((c) => c.ativa && tipos.includes(c.tipo));
+    const nova = opcoes.length === 1 ? opcoes[0] : undefined;
+    setContaId(nova?.id ?? "");
+    setCarteira(carteiraPara(nova, carteira));
   };
 
   // Troca o tipo (Receita/Despesa) e reseta a categoria, que não é mais válida
@@ -133,6 +201,8 @@ export default function DrawerLancamento({
       formaPagamento,
       observacao,
       contaId: contaId || undefined,
+      carteira:
+        contaSelecionada?.tipo === "beneficio" && carteira ? carteira : undefined,
     };
 
     if (emEdicao && lancamentoEditando) {
@@ -358,6 +428,80 @@ export default function DrawerLancamento({
               As categorias são filtradas de acordo com o tipo.
             </span>
 
+            {/* Conta / Cartão — escolher aqui já ajusta a forma de pagamento */}
+            <div>
+              <label
+                htmlFor="lancamento-conta"
+                className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1"
+              >
+                Conta ou cartão{" "}
+                <span className="text-slate-400 font-normal normal-case">
+                  (opcional)
+                </span>
+              </label>
+              {gruposDeContas.length > 0 ? (
+                <select
+                  id="lancamento-conta"
+                  value={contaId}
+                  onChange={(e) => handleTrocarConta(e.target.value)}
+                  className="w-full p-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                >
+                  <option value="">Nenhuma</option>
+                  {gruposDeContas.map((grupo) => (
+                    <optgroup key={grupo.tipoConta} label={ROTULOS_TIPO_CONTA[grupo.tipoConta]}>
+                      {grupo.contas.map((conta) => (
+                        <option key={conta.id} value={conta.id}>
+                          {conta.nome}
+                          {conta.ultimosDigitos ? ` •••• ${conta.ultimosDigitos}` : ""}
+                          {!conta.ativa ? " (inativa)" : ""}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+              ) : (
+                <p className="text-[11px] text-slate-400 bg-slate-50 rounded-xl p-2.5">
+                  Nenhuma conta cadastrada. Cadastre em Contas e Cartões para
+                  saber de onde sai cada gasto.
+                </p>
+              )}
+            </div>
+
+            {/* Saldo do cartão benefício — alimentação, refeição... */}
+            {contaSelecionada?.tipo === "beneficio" && (
+              <div>
+                <span className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  {tipo === "receita" ? "Creditar no saldo" : "Usar o saldo"}
+                </span>
+                {(contaSelecionada.carteiras ?? []).length > 0 ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    {(contaSelecionada.carteiras ?? []).map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setCarteira(c)}
+                        aria-pressed={carteira === c}
+                        className={`flex flex-col items-start rounded-xl border px-3 py-2 text-left transition-all cursor-pointer ${
+                          carteira === c
+                            ? "border-brand/40 bg-red-50 text-brand"
+                            : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                        }`}
+                      >
+                        <span className="text-xs font-bold">{ROTULOS_CARTEIRA[c]}</span>
+                        <span className="text-[10px] font-semibold opacity-80">
+                          Saldo {formatarMoeda(saldos?.[c] ?? 0)}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-slate-400 bg-slate-50 rounded-xl p-2.5">
+                    Este cartão não tem saldos configurados. Edite-o em Contas e Cartões.
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Data + Forma de Pagamento */}
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -391,45 +535,9 @@ export default function DrawerLancamento({
                   <option value="Crédito">Crédito</option>
                   <option value="Dinheiro">Dinheiro</option>
                   <option value="Boleto">Boleto</option>
+                  <option value="Benefício">Benefício (VA/VR)</option>
                 </select>
               </div>
-            </div>
-
-            {/* Conta / Cartão — filtrado pela forma de pagamento */}
-            <div>
-              <label
-                htmlFor="lancamento-conta"
-                className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1"
-              >
-                {ehCredito ? "Cartão" : "Conta"}{" "}
-                <span className="text-slate-400 font-normal normal-case">
-                  (opcional)
-                </span>
-              </label>
-              {contasDisponiveis.length > 0 ? (
-                <select
-                  id="lancamento-conta"
-                  value={contaId}
-                  onChange={(e) => setContaId(e.target.value)}
-                  className="w-full p-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-                >
-                  <option value="">
-                    {ehCredito ? "Nenhum cartão" : "Nenhuma conta"}
-                  </option>
-                  {contasDisponiveis.map((conta) => (
-                    <option key={conta.id} value={conta.id}>
-                      {conta.nome}
-                      {conta.ultimosDigitos ? ` •••• ${conta.ultimosDigitos}` : ""}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <p className="text-[11px] text-slate-400 bg-slate-50 rounded-xl p-2.5">
-                  {ehCredito
-                    ? "Nenhum cartão cadastrado. Cadastre em Contas e Cartões para acompanhar as faturas."
-                    : "Nenhuma conta compatível cadastrada. Cadastre em Contas e Cartões."}
-                </p>
-              )}
             </div>
 
             {/* Observação */}

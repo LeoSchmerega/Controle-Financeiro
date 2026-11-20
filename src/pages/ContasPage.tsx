@@ -2,13 +2,24 @@
 // Contas e cartões do usuário. Cartões mostram a fatura aberta e o limite;
 // as demais contas mostram o que entrou e saiu no mês atual.
 import { useMemo, useState } from "react";
-import { CreditCard, Edit2, Plus, Receipt, Trash2, Wallet } from "lucide-react";
+import {
+  CreditCard,
+  Edit2,
+  Gift,
+  Plus,
+  Receipt,
+  Trash2,
+  Wallet,
+} from "lucide-react";
 import { useFinance } from "../context/FinanceContext";
 import ModalConta from "../components/Contas/ModalConta";
 import ModalFatura from "../components/Contas/ModalFatura";
-import type { Conta } from "../types/financeiro";
+import DrawerLancamento from "../components/Lancamentos/DrawerLancamento";
+import type { Conta, TipoTransacao } from "../types/financeiro";
 import {
+  ROTULOS_CARTEIRA,
   ROTULOS_TIPO_CONTA,
+  saldosDoBeneficio,
   formatarDiaMes,
   formatarMoeda,
   resumoDoCartao,
@@ -22,6 +33,11 @@ export default function ContasPage() {
   const [contaEditando, setContaEditando] = useState<Conta | null>(null);
   const [faturaDe, setFaturaDe] = useState<Conta | null>(null);
   const [excluindo, setExcluindo] = useState<Conta | null>(null);
+  // Lançamento novo já vinculado a uma conta (botões de cada cartão)
+  const [lancarEm, setLancarEm] = useState<{
+    contaId: string;
+    tipo: TipoTransacao;
+  } | null>(null);
 
   const ordenadas = useMemo(
     () =>
@@ -125,6 +141,8 @@ export default function ContasPage() {
                       >
                         {conta.tipo === "cartao_credito" ? (
                           <CreditCard className="w-4 h-4" />
+                        ) : conta.tipo === "beneficio" ? (
+                          <Gift className="w-4 h-4" />
                         ) : (
                           <Wallet className="w-4 h-4" />
                         )}
@@ -196,14 +214,65 @@ export default function ContasPage() {
                         </div>
                       )}
 
-                      <button
-                        type="button"
-                        onClick={() => setFaturaDe(conta)}
-                        className="mt-auto inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
-                      >
-                        <Receipt className="w-4 h-4" />
-                        Ver faturas
-                      </button>
+                      <div className="mt-auto grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setFaturaDe(conta)}
+                          className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+                        >
+                          <Receipt className="w-4 h-4" />
+                          Ver faturas
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setLancarEm({ contaId: conta.id, tipo: "despesa" })}
+                          className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand py-2 text-xs font-bold text-white hover:bg-brand-hover transition-colors cursor-pointer"
+                        >
+                          <Plus className="w-4 h-4" />
+                          Nova compra
+                        </button>
+                      </div>
+                    </>
+                  ) : conta.tipo === "beneficio" ? (
+                    <>
+                      {/* Um saldo por carteira (alimentação, refeição...) */}
+                      <div className="grid grid-cols-2 gap-2">
+                        {(conta.carteiras ?? []).map((c) => {
+                          const saldo = saldosDoBeneficio(conta, lancamentos)[c];
+                          return (
+                            <div key={c} className="rounded-xl bg-slate-50 px-3 py-2">
+                              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                                {ROTULOS_CARTEIRA[c]}
+                              </p>
+                              <p
+                                className={`text-base font-black ${
+                                  saldo < 0 ? "text-rose-600" : "text-slate-900"
+                                }`}
+                              >
+                                {formatarMoeda(saldo)}
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div className="mt-auto grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setLancarEm({ contaId: conta.id, tipo: "receita" })}
+                          className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-50 transition-colors cursor-pointer"
+                        >
+                          <Plus className="w-4 h-4" />
+                          Adicionar saldo
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setLancarEm({ contaId: conta.id, tipo: "despesa" })}
+                          className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand py-2 text-xs font-bold text-white hover:bg-brand-hover transition-colors cursor-pointer"
+                        >
+                          <Plus className="w-4 h-4" />
+                          Nova compra
+                        </button>
+                      </div>
                     </>
                   ) : (
                     <div className="grid grid-cols-2 gap-3">
@@ -223,6 +292,14 @@ export default function ContasPage() {
                           {formatarMoeda(movimento?.saidas ?? 0)}
                         </p>
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => setLancarEm({ contaId: conta.id, tipo: "despesa" })}
+                        className="col-span-2 inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Novo lançamento
+                      </button>
                     </div>
                   )}
                 </div>
@@ -236,6 +313,13 @@ export default function ContasPage() {
         isOpen={modalAberto}
         onClose={() => setModalAberto(false)}
         contaEditando={contaEditando}
+      />
+
+      <DrawerLancamento
+        isOpen={lancarEm !== null}
+        onClose={() => setLancarEm(null)}
+        contaInicialId={lancarEm?.contaId}
+        tipoInicial={lancarEm?.tipo}
       />
 
       <ModalFatura

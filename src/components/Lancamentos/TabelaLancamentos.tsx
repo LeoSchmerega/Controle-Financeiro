@@ -2,6 +2,7 @@
 import { Edit2, Trash2, Repeat } from "lucide-react";
 import type { Categoria, Lancamento } from "../../types/financeiro";
 import { useFinance } from "../../context/FinanceContext";
+import { ROTULOS_CARTEIRA } from "../../utils/contaUtils";
 
 interface TabelaLancamentosProps {
   lancamentos: Lancamento[];
@@ -117,6 +118,7 @@ export default function TabelaLancamentos({
                               aria-hidden="true"
                             />
                             {conta.nome}
+                            {item.carteira && ` · ${ROTULOS_CARTEIRA[item.carteira]}`}
                           </span>
                         ) : null;
                       })()}
